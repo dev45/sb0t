@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -20,7 +20,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using Jurassic;
 using Jurassic.Library;
 
@@ -29,7 +29,7 @@ namespace scripting.Instances
     class JSQueryInstance : ObjectInstance
     {
         internal String query { get; private set; }
-        internal List<SQLiteParameter> _params = new List<SQLiteParameter>();
+        internal List<SqliteParameter> _params = new List<SqliteParameter>();
 
         public JSQueryInstance(ObjectInstance prototype)
             : base(prototype)
@@ -50,15 +50,15 @@ namespace scripting.Instances
                 this.query = this.query.Replace("{" + counter + "}", "@var" + counter);
 
                 if (a[i] is String || a[i] is ConcatenatedString)
-                    this._params.Add(new SQLiteParameter(("@var" + (counter++)), a[i].ToString()));
+                    this._params.Add(new SqliteParameter(("@var" + (counter++)), a[i].ToString()));
                 else if (a[i] is int || a[i] is double)
                 {
                     int _i;
 
                     if (int.TryParse(a[i].ToString(), out _i))
-                        this._params.Add(new SQLiteParameter(("@var" + (counter++)), _i));
+                        this._params.Add(new SqliteParameter(("@var" + (counter++)), _i));
                     else
-                        this._params.Add(new SQLiteParameter(("@var" + (counter++)), double.Parse(a[i].ToString())));
+                        this._params.Add(new SqliteParameter(("@var" + (counter++)), double.Parse(a[i].ToString())));
                 }
             }
 

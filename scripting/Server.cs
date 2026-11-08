@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -79,7 +79,7 @@ namespace scripting
         /// </summary>
         public static String DataPath
         {
-            get { return Callback.DataPath + "Scripting\\"; }
+            get { return Path.Combine(Callback.DataPath, "Scripting"); }
         }
 
         public static void SetCallback(IHostApp cb)

@@ -22,9 +22,6 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Net;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.Threading;
 using Jurassic;
 using Jurassic.Library;
@@ -85,24 +82,8 @@ namespace scripting.Instances
                                 bytes_in.AddRange(buf.Take(received));
                     }
 
-                    using (Bitmap avatar_raw = new Bitmap(new MemoryStream(bytes_in.ToArray())))
-                    {
-                        using (Bitmap avatar_sized = new Bitmap(48, 48))
-                        {
-                            using (Graphics g = Graphics.FromImage(avatar_sized))
-                            {
-                                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                                g.DrawImage(avatar_raw, new RectangleF(0, 0, 48, 48));
-
-                                using (MemoryStream ms = new MemoryStream())
-                                {
-                                    avatar_sized.Save(ms, ImageFormat.Jpeg);
-                                    result.Data = ms.ToArray();
-                                    bytes_in.Clear();
-                                }
-                            }
-                        }
-                    }
+                    result.Data = ImageHelper.Avatar(bytes_in.ToArray());
+                    bytes_in.Clear();
                 }
                 catch { }
 
@@ -142,23 +123,7 @@ namespace scripting.Instances
                             {
                                 byte[] data = File.ReadAllBytes(path);
 
-                                using (Bitmap avatar_raw = new Bitmap(new MemoryStream(data)))
-                                {
-                                    using (Bitmap avatar_sized = new Bitmap(48, 48))
-                                    {
-                                        using (Graphics g = Graphics.FromImage(avatar_sized))
-                                        {
-                                            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                                            g.DrawImage(avatar_raw, new RectangleF(0, 0, 48, 48));
-
-                                            using (MemoryStream ms = new MemoryStream())
-                                            {
-                                                avatar_sized.Save(ms, ImageFormat.Jpeg);
-                                                av.Data = ms.ToArray();
-                                            }
-                                        }
-                                    }
-                                }
+                                av.Data = ImageHelper.Avatar(data);
                             }
                         }
                         catch { }

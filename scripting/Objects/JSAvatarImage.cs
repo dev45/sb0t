@@ -19,9 +19,6 @@
 ﻿using System;
 using System.Linq;
 using System.IO;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using Jurassic;
 using Jurassic.Library;
 
@@ -128,19 +125,7 @@ namespace scripting.Objects
         {
             try
             {
-                using (Bitmap avatar_raw = new Bitmap(new MemoryStream(data)))
-                using (Bitmap avatar_sized = new Bitmap(48, 48))
-                using (Graphics g = Graphics.FromImage(avatar_sized))
-                {
-                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    g.DrawImage(avatar_raw, new RectangleF(0, 0, 48, 48));
-
-                    using (MemoryStream ms = new MemoryStream())
-                    {
-                        avatar_sized.Save(ms, ImageFormat.Jpeg);
-                        this.Data = ms.ToArray();
-                    }
-                }
+                this.Data = ImageHelper.Avatar(data);
             }
             catch { }
         }

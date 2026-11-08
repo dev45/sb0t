@@ -20,9 +20,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -87,44 +84,11 @@ namespace scripting.Instances
                                 bytes_in.AddRange(buf.Take(received));
                     }
 
-                    using (Bitmap avatar_raw = new Bitmap(new MemoryStream(bytes_in.ToArray())))
-                    {
-                        int img_x = avatar_raw.Width;
-                        int img_y = avatar_raw.Height;
-
-                        if (img_x > 384)
-                        {
-                            img_x = 384;
-                            img_y = avatar_raw.Height - (int)Math.Floor(Math.Floor((double)avatar_raw.Height / 100) * Math.Floor(((double)(avatar_raw.Width - 384) / avatar_raw.Width) * 100));
-                        }
-
-                        if (img_y > 384)
-                        {
-                            img_x -= (int)Math.Floor(Math.Floor((double)img_x / 100) * Math.Floor(((double)(img_y - 384) / img_y) * 100));
-                            img_y = 384;
-                        }
-
-                        using (Bitmap avatar_sized = new Bitmap(img_x, img_y))
-                        {
-                            using (Graphics g = Graphics.FromImage(avatar_sized))
-                            {
-                                using (SolidBrush sb = new SolidBrush(Color.White))
-                                    g.FillRectangle(sb, new Rectangle(0, 0, img_x, img_y));
-
-                                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                                g.DrawImage(avatar_raw, new RectangleF(0, 0, img_x, img_y));
-
-                                using (MemoryStream ms = new MemoryStream())
-                                {
-                                    avatar_sized.Save(ms, ImageFormat.Jpeg);
-                                    result.Height = avatar_sized.Height;
-                                    byte[] img_buffer = ms.ToArray();
-                                    result.Data = Server.Compression.Compress(img_buffer);
-                                    bytes_in.Clear();
-                                }
-                            }
-                        }
-                    }
+                    int h;
+                    byte[] jpeg = ImageHelper.Scribble(bytes_in.ToArray(), out h);
+                    result.Height = h;
+                    result.Data = Server.Compression.Compress(jpeg);
+                    bytes_in.Clear();
                 }
                 catch { }
 
@@ -166,40 +130,10 @@ namespace scripting.Instances
 
                                 try
                                 {
-                                    using (Bitmap avatar_raw = new Bitmap(new MemoryStream(data)))
-                                    {
-                                        int img_x = avatar_raw.Width;
-                                        int img_y = avatar_raw.Height;
-
-                                        if (img_x > 384)
-                                        {
-                                            img_x = 384;
-                                            img_y = avatar_raw.Height - (int)Math.Floor(Math.Floor((double)avatar_raw.Height / 100) * Math.Floor(((double)(avatar_raw.Width - 384) / avatar_raw.Width) * 100));
-                                        }
-
-                                        if (img_y > 384)
-                                        {
-                                            img_x -= (int)Math.Floor(Math.Floor((double)img_x / 100) * Math.Floor(((double)(img_y - 384) / img_y) * 100));
-                                            img_y = 384;
-                                        }
-
-                                        using (Bitmap avatar_sized = new Bitmap(img_x, img_y))
-                                        {
-                                            using (Graphics g = Graphics.FromImage(avatar_sized))
-                                            {
-                                                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                                                g.DrawImage(avatar_raw, new RectangleF(0, 0, img_x, img_y));
-
-                                                using (MemoryStream ms = new MemoryStream())
-                                                {
-                                                    avatar_sized.Save(ms, ImageFormat.Jpeg);
-                                                    scr.Height = avatar_sized.Height;
-                                                    byte[] img_buffer = ms.ToArray();
-                                                    scr.Data = Server.Compression.Compress(img_buffer);
-                                                }
-                                            }
-                                        }
-                                    }
+                                    int h;
+                                    byte[] jpeg = ImageHelper.Scribble(data, out h);
+                                    scr.Height = h;
+                                    scr.Data = Server.Compression.Compress(jpeg);
                                 }
                                 catch { }
                             }

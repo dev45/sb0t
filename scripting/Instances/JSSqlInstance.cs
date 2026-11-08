@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using Jurassic;
 using Jurassic.Library;
 
@@ -41,8 +41,8 @@ namespace scripting.Instances
         }
 
         private String ConnectionString { get; set; }
-        private SQLiteConnection Connection { get; set; }
-        private SQLiteDataReader Reader { get; set; }
+        private SqliteConnection Connection { get; set; }
+        private SqliteDataReader Reader { get; set; }
 
         private static String[] bad_chars = new String[]
         {
@@ -138,7 +138,7 @@ namespace scripting.Instances
 
             try
             {
-                using (SQLiteCommand cmd = new SQLiteCommand(query.query, this.Connection))
+                using (SqliteCommand cmd = new SqliteCommand(query.query, this.Connection))
                 {
                     for (int i = 0; i < query._params.Count; i++)
                         cmd.Parameters.Add(query._params[i]);
@@ -177,8 +177,6 @@ namespace scripting.Instances
                         path = Path.Combine(path, file);
                         this.ConnectionString = "Data Source=\"" + path + "\"";
 
-                        if (!File.Exists(path))
-                            SQLiteConnection.CreateFile(path);
                     }
                     catch { return false; }
 
@@ -196,7 +194,7 @@ namespace scripting.Instances
                     try
                     {
                         if (this.Connection == null)
-                            this.Connection = new SQLiteConnection(this.ConnectionString);
+                            this.Connection = new SqliteConnection(this.ConnectionString);
 
                         if (this.Connection.State != ConnectionState.Open)
                             this.Connection.Open();

@@ -16,11 +16,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.Win32;
+using System.Globalization;
+using System.IO;
+using System.Text.Json;
 using Jurassic;
 using Jurassic.Library;
 
@@ -29,6 +29,14 @@ namespace scripting.Statics
     [JSObject(Name = "Registry")]
     class JSRegistry : ObjectInstance
     {
+        private static readonly object sync = new object();
+        private static Dictionary<string, Dictionary<string, string>> store;
+
+        private static string FilePath
+        {
+            get { return Path.Combine(Server.DataPath, "registry.json"); }
+        }
+
         public JSRegistry(ScriptEngine engine)
             : base(engine)
         {
@@ -37,162 +45,159 @@ namespace scripting.Statics
             DefineProperty(Engine.Symbol.ToStringTag, new PropertyDescriptor("Registry", PropertyAttributes.Sealed), true);
         }
 
+        // ---- almacenamiento (siempre llamar dentro de lock(sync)) ----
+
+        private static Dictionary<string, Dictionary<string, string>> Load()
+        {
+            if (store != null)
+                return store;
+
+            var result = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                if (File.Exists(FilePath))
+                {
+                    var raw = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(File.ReadAllText(FilePath));
+
+                    if (raw != null)
+                        foreach (var script in raw)
+                            result[script.Key] = new Dictionary<string, string>(
+                                script.Value ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                // Archivo corrupto: se conserva una copia para no perder datos al sobrescribir.
+                try { File.Copy(FilePath, FilePath + ".corrupt", true); } catch { }
+            }
+
+            store = result;
+            return store;
+        }
+
+        private static bool Save()
+        {
+            try
+            {
+                Directory.CreateDirectory(Server.DataPath);
+                string tmp = FilePath + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(store, new JsonSerializerOptions { WriteIndented = true }));
+                File.Move(tmp, FilePath, true); // escritura atómica
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string ScriptName(ScriptEngine eng)
+        {
+            return (eng.UserData as string) ?? String.Empty;
+        }
+
+        // ---- API para los scripts ----
+
         [JSFunction(Name = "exists", Flags = JSFunctionFlags.HasEngineParameter, IsWritable = false, IsEnumerable = true)]
         public static bool Exists(ScriptEngine eng, String key)
         {
-            String script = eng.UserData as string;
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting", false);
-
-            if (rk == null)
-                return false;
-
-            rk.Close();
-            rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting\\" + script, false);
-
-            if (rk == null)
-                return false;
-
-            object value = rk.GetValue(key);
-            rk.Close();
-
-            if (value == null)
-                return false;
-
-            return true;
+            lock (sync)
+            {
+                Dictionary<string, string> values;
+                return Load().TryGetValue(ScriptName(eng), out values) && values.ContainsKey(key);
+            }
         }
 
         [JSFunction(Name = "getValue", Flags = JSFunctionFlags.HasEngineParameter, IsWritable = false, IsEnumerable = true)]
         public static String GetValue(ScriptEngine eng, String key)
         {
-            String script = eng.UserData as string;
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting", false);
+            lock (sync)
+            {
+                Dictionary<string, string> values;
+                string value;
 
-            if (rk == null)
+                if (Load().TryGetValue(ScriptName(eng), out values) && values.TryGetValue(key, out value))
+                    return value;
+
                 return null;
-
-            rk.Close();
-            rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting\\" + script, false);
-
-            if (rk == null)
-                return null;
-
-            object value = rk.GetValue(key);
-            rk.Close();
-
-            if (value == null)
-                return null;
-
-            String str = (String)value;
-
-            if (str.Length > 1)
-                return str.Substring(2);
-
-            return null;
+            }
         }
 
         [JSFunction(Name = "getKeys", Flags = JSFunctionFlags.HasEngineParameter, IsWritable = false, IsEnumerable = true)]
         public static Objects.JSRegistryKeyCollection GeyKeys(ScriptEngine eng)
         {
-            List<String> results = new List<String>();
-            String script = eng.UserData as string;
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting", false);
+            string[] keys = new string[0];
 
-            if (rk == null)
-                return new Objects.JSRegistryKeyCollection(eng.Object.InstancePrototype, results.ToArray(), eng.UserData as string);
+            lock (sync)
+            {
+                Dictionary<string, string> values;
 
-            rk.Close();
-            rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting\\" + script, false);
+                if (Load().TryGetValue(ScriptName(eng), out values))
+                {
+                    keys = new string[values.Count];
+                    values.Keys.CopyTo(keys, 0);
+                }
+            }
 
-            if (rk == null)
-                return new Objects.JSRegistryKeyCollection(eng.Object.InstancePrototype, results.ToArray(), eng.UserData as string);
-
-            foreach (String str in rk.GetValueNames())
-                results.Add(str);
-
-            return new Objects.JSRegistryKeyCollection(eng.Object.InstancePrototype, results.ToArray(), eng.UserData as string);
+            return new Objects.JSRegistryKeyCollection(eng.Object.InstancePrototype, keys, eng.UserData as string);
         }
 
         [JSFunction(Name = "setValue", Flags = JSFunctionFlags.HasEngineParameter, IsWritable = false, IsEnumerable = true)]
         public static bool SetValue(ScriptEngine eng, String key, object value)
         {
-            String script = eng.UserData as string;
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting", false);
+            string text;
 
-            if (rk == null)
-                Registry.CurrentUser.CreateSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting");
+            if (value is double)
+                text = ((double)value).ToString(CultureInfo.InvariantCulture);
+            else if (value is int)
+                text = ((int)value).ToString(CultureInfo.InvariantCulture);
+            else if (value is String || value is ConcatenatedString)
+                text = value.ToString();
             else
-                rk.Close();
+                return false;
 
-            rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting\\" + script, true);
-
-            if (rk == null)
+            lock (sync)
             {
-                Registry.CurrentUser.CreateSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting\\" + script);
-                rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting\\" + script, true);
-            }
+                var all = Load();
+                string script = ScriptName(eng);
+                Dictionary<string, string> values;
 
-            if (value is int || value is String || value is double || value is ConcatenatedString)
-            {
-                rk.SetValue(key, (String)("ST" + value.ToString()));
-                rk.Close();
-                return true;
-            }
+                if (!all.TryGetValue(script, out values))
+                {
+                    values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                    all[script] = values;
+                }
 
-            rk.Close();
-            return false;
+                values[key] = text;
+                return Save();
+            }
         }
 
         [JSFunction(Name = "deleteValue", Flags = JSFunctionFlags.HasEngineParameter, IsWritable = false, IsEnumerable = true)]
         public static bool DeleteValue(ScriptEngine eng, String key)
         {
-            String script = eng.UserData as string;
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting", false);
-
-            if (rk == null)
-                return false;
-            else
-                rk.Close();
-
-            rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting\\" + script, true);
-
-            if (rk == null)
-                return false;
-
-            try
+            lock (sync)
             {
-                rk.DeleteValue(key, true);
-            }
-            catch  // value doesn't exist
-            {
-                rk.Close();
-                return false;
-            }
+                Dictionary<string, string> values;
 
-            rk.Close();
-            return true;
+                if (!Load().TryGetValue(ScriptName(eng), out values) || !values.Remove(key))
+                    return false;
+
+                return Save();
+            }
         }
 
         [JSFunction(Name = "clear", Flags = JSFunctionFlags.HasEngineParameter, IsWritable = false, IsEnumerable = true)]
         public static bool Clear(ScriptEngine eng)
         {
-            String script = eng.UserData as string;
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\scripting", true);
-
-            if (rk == null)
-                return false;
-
-            try
+            lock (sync)
             {
-                rk.DeleteSubKey(script, true);
-            }
-            catch // script subkey doesn't exist
-            {
-                rk.Close();
-                return false;
-            }
+                if (!Load().Remove(ScriptName(eng)))
+                    return false;
 
-            rk.Close();
-            return true;
+                return Save();
+            }
         }
     }
 }
