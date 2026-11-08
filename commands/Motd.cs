@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -43,13 +43,13 @@ namespace commands
         {
             try
             {
-                if (File.Exists(Server.DataPath + "motd.txt"))
-                    lines = new List<String>(File.ReadAllLines(Server.DataPath + "motd.txt"));
+                if (File.Exists(Path.Combine(Server.DataPath, "motd.txt")))
+                    lines = new List<String>(File.ReadAllLines(Path.Combine(Server.DataPath, "motd.txt")));
                 else
                 {
                     lines.Add("304Welcome to my room +n :-)");
                     lines.Add("303Have fun!");
-                    File.WriteAllLines(Server.DataPath + "motd.txt", lines.ToArray(), Encoding.UTF8);
+                    File.WriteAllLines(Path.Combine(Server.DataPath, "motd.txt"), lines.ToArray(), Encoding.UTF8);
                 }
             }
             catch { }
