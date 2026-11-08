@@ -21,8 +21,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
-using System.Windows.Controls;
-using System.Windows.Media.Imaging;
 using iconnect;
 
 namespace commands
@@ -57,15 +55,6 @@ namespace commands
             }
         }
 
-        public BitmapSource Icon
-        {
-            get { return null; }
-        }
-
-        public UserControl GUI
-        {
-            get { return null; }
-        }
 
         public void Dispose() { }
         public void Load() { }

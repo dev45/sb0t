@@ -20,7 +20,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.Win32;
+using System.IO;
+using System.Text.Json;
 
 namespace commands
 {
@@ -154,102 +155,87 @@ namespace commands
             typeof(bool)
         };
 
+                private static readonly object sync = new object();
+        private static Dictionary<string, JsonElement> cache;
+
+        // Carpeta de datos de la sala: variable de entorno ROOM_DATA o ./data
+        private static string DataDir
+        {
+            get
+            {
+                string env = Environment.GetEnvironmentVariable("ROOM_DATA");
+                return String.IsNullOrEmpty(env) ? Path.Combine(AppContext.BaseDirectory, "data") : env;
+            }
+        }
+
+        private static string FilePath { get { return Path.Combine(DataDir, "settings.json"); } }
+
+        private static Dictionary<string, JsonElement> Load()
+        {
+            if (cache != null)
+                return cache;
+
+            try
+            {
+                if (File.Exists(FilePath))
+                    cache = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(File.ReadAllText(FilePath));
+            }
+            catch { }
+
+            if (cache == null)
+                cache = new Dictionary<string, JsonElement>();
+
+            return cache;
+        }
+
         public static T Get<T>(String name)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\settings");
+            Type type = typeof(T);
 
-            if (key == null)
+            if (Array.IndexOf(AcceptableTypes, type) < 0)
+                throw new Exception("Setting type not supported");
+
+            lock (sync)
             {
-                Registry.CurrentUser.CreateSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\settings");
-                key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\settings");
+                if (Load().TryGetValue(name, out JsonElement element))
+                {
+                    try { return element.Deserialize<T>(); }
+                    catch { }
+                }
             }
 
-            if (key != null)
-            {
-                object value = key.GetValue(name);
-                key.Close();
-                Type type = typeof(T);
+            // Mismos valores por defecto que antes
+            if (type == typeof(String))
+                return (T)(object)String.Empty;
 
-                for (int i = 0; i < AcceptableTypes.Length; i++)
-                    if (AcceptableTypes[i].Equals(type))
-                        if (i <= 4)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(value, typeof(T));
-                            else
-                                return (T)Convert.ChangeType(0, typeof(T));
-                        }
-                        else if (i == 6)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(value, typeof(T));
-                            else
-                                return default(T);
-                        }
-                        else if (i == 5)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(Encoding.UTF8.GetString((byte[])value), typeof(T));
-                            else
-                                return (T)Convert.ChangeType(String.Empty, typeof(T));
-                        }
-                        else if (i == 7)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(((int)value == 1), typeof(T));
-                            else
-                                return (T)Convert.ChangeType(false, typeof(T));
-                        }
-            }
-
-            throw new Exception("Registry value not found or invalid casting");
+            return default(T);
         }
 
         public static bool Set(String name, object value)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\settings", true);
+            if (value == null || Array.IndexOf(AcceptableTypes, value.GetType()) < 0)
+                return false;
 
-            if (key == null)
+            lock (sync)
             {
-                Registry.CurrentUser.CreateSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\settings");
-                key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\settings", true);
-            }
-
-            Type type = value.GetType();
-
-            for (int i = 0; i < AcceptableTypes.Length; i++)
-            {
-                if (AcceptableTypes[i].Equals(type))
+                try
                 {
-                    if (i <= 4)
-                    {
-                        key.SetValue(name, value, RegistryValueKind.DWord);
-                        key.Close();
-                        return true;
-                    }
-                    else if (i == 5)
-                    {
-                        key.SetValue(name, Encoding.UTF8.GetBytes((String)value), RegistryValueKind.Binary);
-                        key.Close();
-                        return true;
-                    }
-                    else if (i == 6)
-                    {
-                        key.SetValue(name, value, RegistryValueKind.Binary);
-                        key.Close();
-                        return true;
-                    }
-                    else if (i == 7)
-                    {
-                        key.SetValue(name, ((bool)value ? (int)1 : (int)0), RegistryValueKind.DWord);
-                        key.Close();
-                        return true;
-                    }
+                    Dictionary<string, JsonElement> data = Load();
+                    data[name] = JsonSerializer.SerializeToElement(value, value.GetType());
+
+                    Directory.CreateDirectory(DataDir);
+                    string tmp = FilePath + ".tmp";
+                    File.WriteAllText(tmp, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                    File.Move(tmp, FilePath, true);   // escritura atómica
+                    return true;
+                }
+                catch
+                {
+                    return false;
                 }
             }
+        }
 
-            key.Close();
-            return false;
         }
     }
-}
+

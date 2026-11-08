@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -18,7 +18,7 @@
 
 ﻿using System;
 using System.IO;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using iconnect;
 
 namespace commands
@@ -37,13 +37,13 @@ namespace commands
             {
                 int time = (int)(Server.Time - 1209600);
 
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
-                    using (SQLiteCommand command = new SQLiteCommand("delete from whowas where jointime<@jointime", connection))
+                    using (SqliteCommand command = new SqliteCommand("delete from whowas where jointime<@jointime", connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@jointime", time));
+                        command.Parameters.Add(new SqliteParameter("@jointime", time));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -54,17 +54,17 @@ namespace commands
         {
             LastSeenResult result = null;
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
                 String query = @"select * from whowas where ip=@ip order by jointime desc";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@ip", client.ExternalIP.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@ip", client.ExternalIP.ToString()));
 
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (SqliteDataReader reader = command.ExecuteReader())
                         if (reader.Read())
                         {
                             String name = (String)reader["name"];
@@ -86,19 +86,19 @@ namespace commands
         {
             int time = (int)(Server.Time - 1);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
                 bool exists = false;
 
                 String query = @"select * from whowas where name=@name and ip=@ip";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@name", client.Name));
-                    command.Parameters.Add(new SQLiteParameter("@ip", client.ExternalIP.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@name", client.Name));
+                    command.Parameters.Add(new SqliteParameter("@ip", client.ExternalIP.ToString()));
 
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (SqliteDataReader reader = command.ExecuteReader())
                         if (reader.Read())
                             exists = true;
                 }
@@ -108,12 +108,12 @@ namespace commands
                     query = @"insert into whowas (name, version, ip, jointime) 
                                  values (@name, @version, @ip, @jointime)";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@name", client.Name));
-                        command.Parameters.Add(new SQLiteParameter("@version", client.Version));
-                        command.Parameters.Add(new SQLiteParameter("@ip", client.ExternalIP.ToString()));
-                        command.Parameters.Add(new SQLiteParameter("@jointime", time));
+                        command.Parameters.Add(new SqliteParameter("@name", client.Name));
+                        command.Parameters.Add(new SqliteParameter("@version", client.Version));
+                        command.Parameters.Add(new SqliteParameter("@ip", client.ExternalIP.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@jointime", time));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -121,11 +121,11 @@ namespace commands
                 {
                     query = @"update whowas set jointime=@jointime where name=@name and ip=@ip";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@name", client.Name));
-                        command.Parameters.Add(new SQLiteParameter("@ip", client.ExternalIP.ToString()));
-                        command.Parameters.Add(new SQLiteParameter("@jointime", time));
+                        command.Parameters.Add(new SqliteParameter("@name", client.Name));
+                        command.Parameters.Add(new SqliteParameter("@ip", client.ExternalIP.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@jointime", time));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -140,17 +140,17 @@ namespace commands
                              order by jointime desc
                              limit 50";
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@name", "%" + q + "%"));
-                    command.Parameters.Add(new SQLiteParameter("@ip", q + "%"));
+                    command.Parameters.Add(new SqliteParameter("@name", "%" + q + "%"));
+                    command.Parameters.Add(new SqliteParameter("@ip", q + "%"));
                     bool exists = false;
 
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (SqliteDataReader reader = command.ExecuteReader())
                         while (reader.Read())
                         {
                             exists = true;
@@ -171,9 +171,11 @@ namespace commands
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(DataPath);
+            string dir = Path.GetDirectoryName(Path.GetFullPath(DataPath));
+if (!String.IsNullOrEmpty(dir))
+    Directory.CreateDirectory(dir);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
@@ -185,7 +187,7 @@ namespace commands
                                      jointime int not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
         }
