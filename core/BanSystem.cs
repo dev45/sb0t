@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.Net;
 using iconnect;
 
@@ -60,22 +60,22 @@ namespace core
 
             list.Add(ban);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
                 String query = @"insert into bans (name, version, guid, externalip, localip, port, ident) 
                                  values (@name, @version, @guid, @externalip, @localip, @port, @ident)";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@name", ban.Name));
-                    command.Parameters.Add(new SQLiteParameter("@version", ban.Version));
-                    command.Parameters.Add(new SQLiteParameter("@guid", ban.Guid.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@externalip", ban.ExternalIP.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@localip", ban.LocalIP.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@port", (int)ban.Port));
-                    command.Parameters.Add(new SQLiteParameter("@ident", (int)ban.Ident));
+                    command.Parameters.Add(new SqliteParameter("@name", ban.Name));
+                    command.Parameters.Add(new SqliteParameter("@version", ban.Version));
+                    command.Parameters.Add(new SqliteParameter("@guid", ban.Guid.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@externalip", ban.ExternalIP.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@localip", ban.LocalIP.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@port", (int)ban.Port));
+                    command.Parameters.Add(new SqliteParameter("@ident", (int)ban.Ident));
                     command.ExecuteNonQuery();
                 }
             }
@@ -102,22 +102,22 @@ namespace core
 
             list.Add(ban);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
                 String query = @"insert into bans (name, version, guid, externalip, localip, port, ident) 
                                  values (@name, @version, @guid, @externalip, @localip, @port, @ident)";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@name", ban.Name));
-                    command.Parameters.Add(new SQLiteParameter("@version", ban.Version));
-                    command.Parameters.Add(new SQLiteParameter("@guid", ban.Guid.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@externalip", ban.ExternalIP.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@localip", ban.LocalIP.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@port", (int)ban.Port));
-                    command.Parameters.Add(new SQLiteParameter("@ident", (int)ban.Ident));
+                    command.Parameters.Add(new SqliteParameter("@name", ban.Name));
+                    command.Parameters.Add(new SqliteParameter("@version", ban.Version));
+                    command.Parameters.Add(new SqliteParameter("@guid", ban.Guid.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@externalip", ban.ExternalIP.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@localip", ban.LocalIP.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@port", (int)ban.Port));
+                    command.Parameters.Add(new SqliteParameter("@ident", (int)ban.Ident));
                     command.ExecuteNonQuery();
                 }
             }
@@ -129,16 +129,16 @@ namespace core
 
             if (ban != null)
             {
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
                     String query = @"delete from bans
                                      where ident=@ident";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@ident", (int)ban.Ident));
+                        command.Parameters.Add(new SqliteParameter("@ident", (int)ban.Ident));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -166,13 +166,13 @@ namespace core
 
         public static void ClearBans()
         {
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
                 String query = @"delete from bans";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
 
@@ -198,12 +198,12 @@ namespace core
 
             list = new List<Ban>();
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand("select * from bans", connection))
-                using (SQLiteDataReader reader = command.ExecuteReader())
+                using (SqliteCommand command = new SqliteCommand("select * from bans", connection))
+                using (SqliteDataReader reader = command.ExecuteReader())
                     while (reader.Read())
                         list.Add(new Ban
                         {
@@ -220,9 +220,9 @@ namespace core
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(DataPath);
+            SqliteHelper.CreateFile(DataPath);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
@@ -237,7 +237,7 @@ namespace core
                                      ident int not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
         }

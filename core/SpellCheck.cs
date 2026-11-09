@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -20,51 +20,61 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using NHunspell;
+using System.IO;
+using WeCantSpell.Hunspell;
 
 namespace core
 {
     class SpellCheck
     {
-        private static Hunspell Engine { get; set; }
+        private static WordList Engine { get; set; }
+        private static readonly HashSet<String> Custom = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
 
         private static void Init()
         {
-            Engine = new Hunspell();
-            Engine.Load("dictionary.aff", "dictionary.dic");
-            Engine.Add("lol");
-            Engine.Add("rofl");
-            Engine.Add("lmao");
-            Engine.Add("lmfao");
-            Engine.Add("pmsl");
-            Engine.Add("wtf");
-            Engine.Add("nvm");
-            Engine.Add("irl");
-            Engine.Add("ily");
-            Engine.Add("bff");
-            Engine.Add("tyt");
-            Engine.Add("ttyl");
-            Engine.Add("brb");
-            Engine.Add("bbs");
-            Engine.Add("bbl");
-            Engine.Add("hb");
-            Engine.Add("ty");
-            Engine.Add("yw");
-            Engine.Add("afaik");
-            Engine.Add("afk");
-            Engine.Add("idk");
-            Engine.Add("bf");
-            Engine.Add("gf");
-            Engine.Add("btw");
-            Engine.Add("np");
-            Engine.Add("omg");
-            Engine.Add("oic");
-            Engine.Add("tmi");
-            Engine.Add("asl");
-            Engine.Add("ik");
-            Engine.Add("ikr");
-            Engine.Add("k");
-            Engine.Add("plz");
+            if (Engine != null)
+                return;
+
+            Engine = WordList.CreateFromFiles(Path.Combine(AppContext.BaseDirectory, "dictionary.dic"));
+            
+            Custom.Add("lol");
+            Custom.Add("rofl");
+            Custom.Add("lmao");
+            Custom.Add("lmfao");
+            Custom.Add("pmsl");
+            Custom.Add("wtf");
+            Custom.Add("nvm");
+            Custom.Add("irl");
+            Custom.Add("ily");
+            Custom.Add("bff");
+            Custom.Add("tyt");
+            Custom.Add("ttyl");
+            Custom.Add("brb");
+            Custom.Add("bbs");
+            Custom.Add("bbl");
+            Custom.Add("hb");
+            Custom.Add("ty");
+            Custom.Add("yw");
+            Custom.Add("afaik");
+            Custom.Add("afk");
+            Custom.Add("idk");
+            Custom.Add("bf");
+            Custom.Add("gf");
+            Custom.Add("btw");
+            Custom.Add("np");
+            Custom.Add("omg");
+            Custom.Add("oic");
+            Custom.Add("tmi");
+            Custom.Add("asl");
+            Custom.Add("ik");
+            Custom.Add("ikr");
+            Custom.Add("k");
+            Custom.Add("plz");
+        }
+
+        private static bool IsCorrect(String word)
+        {
+            return Custom.Contains(word) || Engine.Check(word);
         }
 
         public static bool Confirm(String text)
@@ -78,7 +88,7 @@ namespace core
             List<String> list = new List<String>(text.Split(new String[] { " " }, StringSplitOptions.RemoveEmptyEntries));
 
             for (int i = 0; i < list.Count; i++)
-                if (!Engine.Spell(list[i]))
+                if (!IsCorrect(list[i]))
                     return false;
 
             return true;
@@ -93,9 +103,9 @@ namespace core
 
             for (int i = 0; i < list.Count; i++)
             {
-                if (!Engine.Spell(list[i]))
+                if (!IsCorrect(list[i]))
                 {
-                    List<String> suggestions = Engine.Suggest(list[i]);
+                    List<String> suggestions = Engine.Suggest(list[i]).ToList();
 
                     if (suggestions != null)
                         if (suggestions.Count > 0)
@@ -115,7 +125,7 @@ namespace core
                 if (Engine == null)
                     Init();
 
-                List<String> suggestions = Engine.Suggest(str);
+                List<String> suggestions = Engine.Suggest(str).ToList();
 
                 if (suggestions != null)
                     return suggestions.ToArray();

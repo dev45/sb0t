@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.IO;
 
 namespace core
@@ -50,16 +50,16 @@ namespace core
         {
             if(AddIgnore(client.Guid, str))
             {
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + path + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + path + "\""))
                 {
                     connection.Open();
 
                     String query = @"insert into ignores (guid, str) values (@guid, @str)";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@guid", client.Guid.ToString()));
-                        command.Parameters.Add(new SQLiteParameter("@str", str));
+                        command.Parameters.Add(new SqliteParameter("@guid", client.Guid.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@str", str));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -104,16 +104,16 @@ namespace core
             list.Remove(str);
             ignores[client.Guid] = list;
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + path + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + path + "\""))
             {
                 connection.Open();
 
                 String query = @"delete from ignores where guid = @guid and str = @str";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@guid", client.Guid.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@str", str));
+                    command.Parameters.Add(new SqliteParameter("@guid", client.Guid.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@str", str));
                     command.ExecuteNonQuery();
                 }
             }
@@ -135,13 +135,13 @@ namespace core
                 CreateDatabase();
             }
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + path + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + path + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand("select * from ignores", connection))
+                using (SqliteCommand command = new SqliteCommand("select * from ignores", connection))
                 {
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (SqliteDataReader reader = command.ExecuteReader())
                     {
                         while (reader.Read())
                         {
@@ -154,9 +154,9 @@ namespace core
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(path);
+            SqliteHelper.CreateFile(path);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + path + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + path + "\""))
             {
                 connection.Open();
 
@@ -166,7 +166,7 @@ namespace core
                                      str text not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
                     command.ExecuteNonQuery();
                 }

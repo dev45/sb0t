@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using System.Net;
 using System.Security.Cryptography;
 
@@ -56,20 +56,20 @@ namespace core
             list = new List<Item>();
             uint time = Helpers.UnixTime;
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand("delete from salt where s < @s", connection))
+                using (SqliteCommand command = new SqliteCommand("delete from salt where s < @s", connection))
                 {
                     int offset = (int)time;
                     offset -= 1209600;
-                    command.Parameters.Add(new SQLiteParameter("@s", offset));
+                    command.Parameters.Add(new SqliteParameter("@s", offset));
                     command.ExecuteNonQuery();
                 }
 
-                using (SQLiteCommand command = new SQLiteCommand("select * from salt", connection))
-                using (SQLiteDataReader reader = command.ExecuteReader())
+                using (SqliteCommand command = new SqliteCommand("select * from salt", connection))
+                using (SqliteDataReader reader = command.ExecuteReader())
                     while (reader.Read())
                     {
                         String ip = (String)reader["ip"];
@@ -90,14 +90,14 @@ namespace core
 
             if (item != null)
             {
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
-                    using (SQLiteCommand command = new SQLiteCommand("update salt set lu=@lu where ip=@ip", connection))
+                    using (SqliteCommand command = new SqliteCommand("update salt set lu=@lu where ip=@ip", connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@lu", (int)time));
-                        command.Parameters.Add(new SQLiteParameter("@ip", client.ExternalIP.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@lu", (int)time));
+                        command.Parameters.Add(new SqliteParameter("@ip", client.ExternalIP.ToString()));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -110,15 +110,15 @@ namespace core
                 item.LastUsed = time;
                 list.Add(item);
 
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
-                    using (SQLiteCommand command = new SQLiteCommand("insert into salt (ip, s, lu) values (@ip, @s, @lu)", connection))
+                    using (SqliteCommand command = new SqliteCommand("insert into salt (ip, s, lu) values (@ip, @s, @lu)", connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@ip", item.Address.ToString()));
-                        command.Parameters.Add(new SQLiteParameter("@s", new Guid(item.Salt).ToString()));
-                        command.Parameters.Add(new SQLiteParameter("@lu", (int)item.LastUsed));
+                        command.Parameters.Add(new SqliteParameter("@ip", item.Address.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@s", new Guid(item.Salt).ToString()));
+                        command.Parameters.Add(new SqliteParameter("@lu", (int)item.LastUsed));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -141,9 +141,9 @@ namespace core
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(DataPath);
+            SqliteHelper.CreateFile(DataPath);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
@@ -154,7 +154,7 @@ namespace core
                                      lu int not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
         }

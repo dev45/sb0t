@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2016  AresChat
 
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 
 namespace core.Linking
 {
@@ -46,12 +46,12 @@ namespace core.Linking
             if (!File.Exists(DataPath))
                 CreateDatabase();
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand("select * from trusted", connection))
-                using (SQLiteDataReader reader = command.ExecuteReader())
+                using (SqliteCommand command = new SqliteCommand("select * from trusted", connection))
+                using (SqliteDataReader reader = command.ExecuteReader())
                     while (reader.Read())
                         items.Add(new TrustedLeafItem
                         {
@@ -63,9 +63,9 @@ namespace core.Linking
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(DataPath);
+            SqliteHelper.CreateFile(DataPath);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
@@ -75,7 +75,7 @@ namespace core.Linking
                                      guid text not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
         }
@@ -87,16 +87,16 @@ namespace core.Linking
 
             items.Add(item);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
                 String query = @"insert into trusted (name, guid) values (@name, @guid)";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@name", item.Name));
-                    command.Parameters.Add(new SQLiteParameter("@guid", item.Guid.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@name", item.Name));
+                    command.Parameters.Add(new SqliteParameter("@guid", item.Guid.ToString()));
                     command.ExecuteNonQuery();
                 }
             }
@@ -106,16 +106,16 @@ namespace core.Linking
 
         public static void RemoveItem(TrustedLeafItem item)
         {
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
                 String query = @"delete from trusted where name=@name and guid=@guid";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@name", item.Name));
-                    command.Parameters.Add(new SQLiteParameter("@guid", item.Guid.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@name", item.Name));
+                    command.Parameters.Add(new SqliteParameter("@guid", item.Guid.ToString()));
                     command.ExecuteNonQuery();
                 }
             }

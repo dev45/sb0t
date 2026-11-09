@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -25,7 +25,7 @@ using System.Net;
 using System.Net.Sockets;
 using iconnect;
 using System.Threading.Tasks;
-using Heijden.DNS;
+
 
 namespace core
 {
@@ -109,7 +109,7 @@ namespace core
         private String _customname = String.Empty;
 
         private uint asn = 0;
-        private Resolver dnsResolver = new Resolver();
+        
 
         public UserScribbleRoomObject ScribbleRoomObject = new UserScribbleRoomObject();
 
@@ -839,9 +839,9 @@ namespace core
             try
             {
                 string reverseIp = new IPAddress(OriginalIP.GetAddressBytes().Reverse().ToArray()).ToString();
-                Response response = dnsResolver.Query($"{reverseIp}.origin.asn.cymru.com", QType.TXT);
+                string asnTxt = DnsLookup.FirstTxt($"{reverseIp}.origin.asn.cymru.com");
 
-                asn = uint.Parse(response.RecordsTXT.FirstOrDefault()?.TXT.FirstOrDefault().Split('|').FirstOrDefault());
+                asn = uint.Parse(asnTxt?.Split('|').FirstOrDefault());
             }
             catch
             {

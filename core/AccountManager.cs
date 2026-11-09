@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -24,7 +24,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.IO;
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using iconnect;
 
 namespace core
@@ -55,12 +55,12 @@ namespace core
 
             list = new List<Account>();
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand("select * from accounts", connection))
-                using (SQLiteDataReader reader = command.ExecuteReader())
+                using (SqliteCommand command = new SqliteCommand("select * from accounts", connection))
+                using (SqliteDataReader reader = command.ExecuteReader())
                     while (reader.Read())
                         list.Add(new Account
                         {
@@ -74,9 +74,9 @@ namespace core
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(DataPath);
+            SqliteHelper.CreateFile(DataPath);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
@@ -88,7 +88,7 @@ namespace core
                                      password blob not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
         }
@@ -257,13 +257,13 @@ namespace core
             {
                 list.RemoveAll(x => x.Guid.Equals(client.Guid));
 
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
-                    using (SQLiteCommand command = new SQLiteCommand("delete from accounts where guid=@guid", connection))
+                    using (SqliteCommand command = new SqliteCommand("delete from accounts where guid=@guid", connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@guid", client.Guid.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@guid", client.Guid.ToString()));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -287,19 +287,19 @@ namespace core
                     });
                 }
 
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
                     String query = @"insert into accounts (name, level, guid, password) 
                                      values (@name, @level, @guid, @password)";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@name", client.Name));
-                        command.Parameters.Add(new SQLiteParameter("@level", (int)(byte)client.Level));
-                        command.Parameters.Add(new SQLiteParameter("@guid", client.Guid.ToString()));
-                        command.Parameters.Add(new SQLiteParameter("@password", pwd));
+                        command.Parameters.Add(new SqliteParameter("@name", client.Name));
+                        command.Parameters.Add(new SqliteParameter("@level", (int)(byte)client.Level));
+                        command.Parameters.Add(new SqliteParameter("@guid", client.Guid.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@password", pwd));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -319,16 +319,16 @@ namespace core
                 Account a = (Account)password;
                 list.RemoveAll(x => x.Guid.Equals(a.Guid));
 
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
                     String query = @"delete from accounts
                                      where guid=@guid";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@guid", a.Guid.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@guid", a.Guid.ToString()));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -348,16 +348,16 @@ namespace core
                 client.Level = ILevel.Regular;
                 client.Registered = false;
 
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
                     String query = @"delete from accounts
                                      where guid=@guid";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@guid", client.Guid.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@guid", client.Guid.ToString()));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -384,17 +384,17 @@ namespace core
             {
                 a.Level = client.Level;
 
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
                     String query = @"update accounts set level=@level
                                      where guid=@guid";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@level", (int)(byte)client.Level));
-                        command.Parameters.Add(new SQLiteParameter("@guid", a.Guid.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@level", (int)(byte)client.Level));
+                        command.Parameters.Add(new SqliteParameter("@guid", a.Guid.ToString()));
                         command.ExecuteNonQuery();
                     }
                 }

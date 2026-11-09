@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -32,7 +32,7 @@ namespace core
             byte[] result;
 
             using (MemoryStream ms = new MemoryStream())
-            using (AesCryptoServiceProvider aes = new AesCryptoServiceProvider())
+            using (Aes aes = Aes.Create())
             using (ICryptoTransform enc = aes.CreateEncryptor(key, iv))
             using (CryptoStream cs = new CryptoStream(ms, enc, CryptoStreamMode.Write))
             {
@@ -49,7 +49,7 @@ namespace core
             byte[] result;
 
             using (MemoryStream ms = new MemoryStream(data))
-            using (AesCryptoServiceProvider aes = new AesCryptoServiceProvider())
+            using (Aes aes = Aes.Create())
             using (ICryptoTransform enc = aes.CreateDecryptor(key, iv))
             using (CryptoStream cs = new CryptoStream(ms, enc, CryptoStreamMode.Read))
             {
@@ -67,7 +67,7 @@ namespace core
             {
                 byte[] result;
 
-                using (AesCryptoServiceProvider aes = new AesCryptoServiceProvider())
+                using (Aes aes = Aes.Create())
                     result = aes.Key;
 
                 return result;
@@ -80,7 +80,7 @@ namespace core
             {
                 byte[] result;
 
-                using (AesCryptoServiceProvider aes = new AesCryptoServiceProvider())
+                using (Aes aes = Aes.Create())
                     result = aes.IV;
 
                 return result;

@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -15,15 +15,12 @@
     You should have received a copy of the GNU Affero General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Drawing.Imaging;
 using System.IO;
+using SkiaSharp;
 
 namespace core
 {
@@ -77,7 +74,6 @@ namespace core
 
             UserPool.AUsers.ForEachWhere(x =>
             {
-                x.Avatar = default_avatar;
                 x.OrgAvatar = default_avatar;
                 x.AvatarReceived = true;
                 x.DefaultAvatar = true;
@@ -100,32 +96,23 @@ namespace core
 
         private static byte[] Scale(byte[] raw)
         {
-            byte[] result;
-
-            using (MemoryStream raw_ms = new MemoryStream(raw))
-            using (Bitmap raw_bmp = new Bitmap(raw_ms))
-            using (Bitmap sized = new Bitmap(48, 48))
-            using (Graphics g = Graphics.FromImage(sized))
+            using (SKBitmap source = SKBitmap.Decode(raw))
             {
-                using (SolidBrush sb = new SolidBrush(Color.White))
-                    g.FillRectangle(sb, new Rectangle(0, 0, 48, 48));
+                if (source == null)
+                    throw new InvalidDataException("Invalid image data");
 
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.CompositingQuality = CompositingQuality.HighQuality;
-                g.SmoothingMode = SmoothingMode.HighQuality;
-                g.DrawImage(raw_bmp, new Rectangle(0, 0, 48, 48));
-                ImageCodecInfo info = new List<ImageCodecInfo>(ImageCodecInfo.GetImageEncoders()).Find(x => x.MimeType == "image/jpeg");
-                EncoderParameters encoding = new EncoderParameters();
-                encoding.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 69L);
-
-                using (MemoryStream ms = new MemoryStream())
+                using (SKBitmap sized = new SKBitmap(48, 48))
+                using (SKCanvas canvas = new SKCanvas(sized))
+                using (SKPaint paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.High })
                 {
-                    sized.Save(ms, info, encoding);
-                    result = ms.ToArray();
+                    canvas.Clear(SKColors.White);
+                    canvas.DrawBitmap(source, new SKRect(0, 0, 48, 48), paint);
+
+                    using (SKImage image = SKImage.FromBitmap(sized))
+                    using (SKData jpeg = image.Encode(SKEncodedImageFormat.Jpeg, 69))
+                        return jpeg.ToArray();
                 }
             }
-
-            return result;
         }
     }
 }

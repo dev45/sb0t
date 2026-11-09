@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -25,7 +25,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Diagnostics;
 using System.IO;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using iconnect;
 
 namespace core.Udp
@@ -96,12 +96,12 @@ namespace core.Udp
 
             try
             {
-                using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                 {
                     connection.Open();
 
-                    using (SQLiteCommand command = new SQLiteCommand("select * from roomsearch", connection))
-                    using (SQLiteDataReader reader = command.ExecuteReader())
+                    using (SqliteCommand command = new SqliteCommand("select * from roomsearch", connection))
+                    using (SqliteDataReader reader = command.ExecuteReader())
                         while (reader.Read())
                             primary_list.Push(new UdpChannelItem
                             {
@@ -122,7 +122,7 @@ namespace core.Udp
         {
             CreateDatabase();
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
                 UdpChannelItem[] rooms = primary_list.ToArray();
@@ -132,15 +132,15 @@ namespace core.Udp
                     String query = @"insert into roomsearch (name, topic, version, ip, port, users, language) 
                                  values (@name, @topic, @version, @ip, @port, @users, @language)";
 
-                    using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                    using (SqliteCommand command = new SqliteCommand(query, connection))
                     {
-                        command.Parameters.Add(new SQLiteParameter("@name", item.Name));
-                        command.Parameters.Add(new SQLiteParameter("@topic", item.Topic));
-                        command.Parameters.Add(new SQLiteParameter("@version", item.Version));
-                        command.Parameters.Add(new SQLiteParameter("@ip", item.IP.ToString()));
-                        command.Parameters.Add(new SQLiteParameter("@port", (int)item.Port));
-                        command.Parameters.Add(new SQLiteParameter("@users", (int)item.Users));
-                        command.Parameters.Add(new SQLiteParameter("@language", (int)item.Language));
+                        command.Parameters.Add(new SqliteParameter("@name", item.Name));
+                        command.Parameters.Add(new SqliteParameter("@topic", item.Topic));
+                        command.Parameters.Add(new SqliteParameter("@version", item.Version));
+                        command.Parameters.Add(new SqliteParameter("@ip", item.IP.ToString()));
+                        command.Parameters.Add(new SqliteParameter("@port", (int)item.Port));
+                        command.Parameters.Add(new SqliteParameter("@users", (int)item.Users));
+                        command.Parameters.Add(new SqliteParameter("@language", (int)item.Language));
                         command.ExecuteNonQuery();
                     }
                 }
@@ -152,9 +152,9 @@ namespace core.Udp
             if (File.Exists(DataPath))
                 File.Delete(DataPath);
 
-            SQLiteConnection.CreateFile(DataPath);
+            SqliteHelper.CreateFile(DataPath);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
@@ -169,7 +169,7 @@ namespace core.Udp
                                      language int not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
         }

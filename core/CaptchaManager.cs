@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.Data;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 
 namespace core
 {
@@ -43,16 +43,16 @@ namespace core
                 {
                     record.Time = time;
 
-                    using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+                    using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
                     {
                         connection.Open();
 
                         String query = @"update captchas set time=@time where guid=@guid";
 
-                        using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                        using (SqliteCommand command = new SqliteCommand(query, connection))
                         {
-                            command.Parameters.Add(new SQLiteParameter("@time", record.Time));
-                            command.Parameters.Add(new SQLiteParameter("@guid", record.Guid.ToString()));
+                            command.Parameters.Add(new SqliteParameter("@time", record.Time));
+                            command.Parameters.Add(new SqliteParameter("@guid", record.Guid.ToString()));
                             command.ExecuteNonQuery();
                         }
                     }
@@ -75,16 +75,16 @@ namespace core
 
             list.Add(record);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
                 String query = @"insert into captchas (guid, time) values (@guid, @time)";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                 {
-                    command.Parameters.Add(new SQLiteParameter("@guid", record.Guid.ToString()));
-                    command.Parameters.Add(new SQLiteParameter("@time", record.Time));
+                    command.Parameters.Add(new SqliteParameter("@guid", record.Guid.ToString()));
+                    command.Parameters.Add(new SqliteParameter("@time", record.Time));
                     command.ExecuteNonQuery();
                 }
             }
@@ -105,25 +105,25 @@ namespace core
 
             list = new List<CaptchaRecord>();
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand("delete from captchas where time<@time", connection))
+                using (SqliteCommand command = new SqliteCommand("delete from captchas where time<@time", connection))
                 {
                     int time = (int)(uint)(Helpers.UnixTime - 1000000000);
                     time -= 1209600;
-                    command.Parameters.Add(new SQLiteParameter("@time", time));
+                    command.Parameters.Add(new SqliteParameter("@time", time));
                     command.ExecuteNonQuery();
                 }
             }
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
-                using (SQLiteCommand command = new SQLiteCommand("select * from captchas", connection))
-                using (SQLiteDataReader reader = command.ExecuteReader())
+                using (SqliteCommand command = new SqliteCommand("select * from captchas", connection))
+                using (SqliteDataReader reader = command.ExecuteReader())
                     while (reader.Read())
                         list.Add(new CaptchaRecord
                         {
@@ -135,9 +135,9 @@ namespace core
 
         private static void CreateDatabase()
         {
-            SQLiteConnection.CreateFile(DataPath);
+            SqliteHelper.CreateFile(DataPath);
 
-            using (SQLiteConnection connection = new SQLiteConnection("Data Source=\"" + DataPath + "\""))
+            using (SqliteConnection connection = new SqliteConnection("Data Source=\"" + DataPath + "\""))
             {
                 connection.Open();
 
@@ -147,7 +147,7 @@ namespace core
                                      time int not null
                                  )";
 
-                using (SQLiteCommand command = new SQLiteCommand(query, connection))
+                using (SqliteCommand command = new SqliteCommand(query, connection))
                     command.ExecuteNonQuery();
             }
         }
