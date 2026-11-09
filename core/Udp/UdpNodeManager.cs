@@ -154,7 +154,7 @@ namespace core.Udp
         {
             Nodes = new List<UdpNode>();
 
-            using (FileStream fs = new FileStream("servers.dat", FileMode.Open, FileAccess.Read))
+            using (FileStream fs = new FileStream(Path.Combine(AppContext.BaseDirectory, "servers.dat"), FileMode.Open, FileAccess.Read))
             {
                 byte[] buffer = new byte[6];
 

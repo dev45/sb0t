@@ -33,7 +33,7 @@ namespace core.Extensions
 
         internal static List<ExPlugin> Plugins
         {
-            get { return list.Values.ToList(); }
+            get { return list == null ? new List<ExPlugin>() : list.Values.ToList(); }
         }
 
         public static void Setup()

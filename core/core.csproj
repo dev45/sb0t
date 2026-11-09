@@ -18,8 +18,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Libraries\dictionary.aff" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="Libraries\dictionary.dic" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Libraries\dictionary.aff" Link="dictionary.aff" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Libraries\dictionary.dic" Link="dictionary.dic" CopyToOutputDirectory="PreserveNewest" />
     <None Update="servers.dat" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
