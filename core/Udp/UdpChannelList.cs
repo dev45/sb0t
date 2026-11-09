@@ -108,9 +108,9 @@ namespace core.Udp
                                 Topic = (String)reader["topic"],
                                 Version = (String)reader["version"],
                                 IP = IPAddress.Parse((String)reader["ip"]),
-                                Port = (ushort)(int)reader["port"],
-                                Users = (ushort)(int)reader["users"],
-                                Language = (byte)(int)reader["language"]
+                                Port = unchecked((ushort)Convert.ToInt64(reader["port"])),
+                                Users = unchecked((ushort)Convert.ToInt64(reader["users"])),
+                                Language = unchecked((byte)Convert.ToInt64(reader["language"]))
                             });
                 }
             }

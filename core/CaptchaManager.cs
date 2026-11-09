@@ -127,7 +127,7 @@ namespace core
                         list.Add(new CaptchaRecord
                         {
                             Guid = new Guid((String)reader["guid"]),
-                            Time = (int)reader["time"]
+                            Time = unchecked((int)Convert.ToInt64(reader["time"]))
                         });
             }
         }

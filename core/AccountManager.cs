@@ -64,7 +64,7 @@ namespace core
                         list.Add(new Account
                         {
                             Name = (String)reader["name"],
-                            Level = (ILevel)(byte)(int)reader["level"],
+                            Level = (ILevel)unchecked((byte)Convert.ToInt64(reader["level"])),
                             Guid = new Guid((String)reader["guid"]),
                             Password = (byte[])reader["password"]
                         });

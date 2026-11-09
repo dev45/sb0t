@@ -73,7 +73,7 @@ namespace commands
                             {
                                 result = new LastSeenResult();
                                 result.Name = name;
-                                result.Time = (int)reader["jointime"];
+                                result.Time = unchecked((int)Convert.ToInt64(reader["jointime"]));
                             }
                         }
                 }
@@ -157,7 +157,7 @@ namespace commands
                             String name = (String)reader["name"];
                             String version = (String)reader["version"];
                             String ip = (String)reader["ip"];
-                            int time = (int)reader["jointime"];
+                            int time = unchecked((int)Convert.ToInt64(reader["jointime"]));
 
                             admin.Print(Template.Text(Category.WhoWas, 0).Replace("+n",
                                 name).Replace("+v", version).Replace("+ip", ip).Replace("+t", Helpers.UnixTimeToDateString((uint)time)));

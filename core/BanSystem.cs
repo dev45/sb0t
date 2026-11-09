@@ -211,8 +211,8 @@ namespace core
                             Guid = new Guid((String)reader["guid"]),
                             ExternalIP = IPAddress.Parse((String)reader["externalip"]),
                             LocalIP = IPAddress.Parse((String)reader["localip"]),
-                            Port = (ushort)(int)reader["port"],
-                            Ident = (ushort)(int)reader["ident"]
+                            Port = unchecked((ushort)Convert.ToInt64(reader["port"])),
+                            Ident = unchecked((ushort)Convert.ToInt64(reader["ident"]))
                         });
             }
         }

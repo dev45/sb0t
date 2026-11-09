@@ -76,7 +76,7 @@ namespace core
                         Item item = new Item();
                         item.Address = IPAddress.Parse(ip);
                         item.Salt = new Guid(s).ToByteArray();
-                        item.LastUsed = (uint)(int)reader["lu"];
+                        item.LastUsed = unchecked((uint)Convert.ToInt64(reader["lu"]));
                         list.Add(item);
                     }
             }
