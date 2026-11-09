@@ -12,9 +12,12 @@ namespace roomhost
     {
         private static readonly object logLock = new object();
 
-        private static int Main()
+        private static int Main(string[] args)
         {
             // Suscribirse ANTES de crear el servidor: ServerCore.Log() dispara el evento sin comprobar si hay suscriptores.
+            if (args.Length > 0 && args[0] == "--selftest")
+                return SelfTest.Run() ? 0 : 1;
+
             ServerCore.LogUpdate += OnLog;
             AppDomain.CurrentDomain.UnhandledException += (s, e) => Write("UNHANDLED EXCEPTION", e.ExceptionObject as Exception);
 
