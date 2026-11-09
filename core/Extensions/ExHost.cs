@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -21,7 +21,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
-using Microsoft.Win32;
 using iconnect;
 
 namespace core.Extensions
@@ -40,16 +39,15 @@ namespace core.Extensions
             this.Channels = new ExChannels();
             this.Accounts = new ExAccounts();
 
-            this.DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-               "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName;
+            this.DataPath = AppPaths.Root;
 
             if (!String.IsNullOrEmpty(datapath))
-                this.DataPath += "\\Extensions\\" + datapath;
+                this.DataPath = Path.Combine(this.DataPath, "Extensions", datapath);
 
             if (!Directory.Exists(this.DataPath))
                 Directory.CreateDirectory(this.DataPath);
 
-            this.DataPath += "\\";
+            this.DataPath += Path.DirectorySeparatorChar;
         }
 
         public IPool Users { get; private set; }
@@ -91,10 +89,12 @@ namespace core.Extensions
 
         public ILevel GetLevel(String command)
         {
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\commands");
-            object value = key.GetValue(command);
-            key.Close();
-            return (ILevel)(byte)(int)value;
+            // Nivel mínimo configurado para el comando (antes estaba en el registro de Windows).
+            // Si no está configurado se usa el más restrictivo, hasta sembrar los valores por defecto.
+            if (!Settings.Has(command, "commands"))
+                return ILevel.Host;
+
+            return (ILevel)Settings.Get<byte>(command, "commands");
         }
 
         public void PublicToTarget(IUser client, String sender, String text)

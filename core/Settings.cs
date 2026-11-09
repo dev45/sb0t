@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -22,7 +22,7 @@ using System.Linq;
 using System.Text;
 using System.Net;
 using System.Diagnostics;
-using Microsoft.Win32;
+using System.Text.Json;
 using System.IO;
 
 namespace core
@@ -47,15 +47,14 @@ namespace core
             language = 0;
             hide_ips = 0;
 
-            WebPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                      "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Style";
+            WebPath = AppPaths.Combine("Style");
 
             if (!Directory.Exists(WebPath))
             {
                 Directory.CreateDirectory(WebPath);
-                WebPath += "\\";
+                WebPath += Path.DirectorySeparatorChar;
             }
-            else WebPath += "\\";
+            else WebPath += Path.DirectorySeparatorChar;
 
             DoOnce.Run();
         }
@@ -172,114 +171,118 @@ namespace core
             typeof(bool)
         };
 
+        private static readonly object sync = new object();
+        private static Dictionary<string, Dictionary<string, JsonElement>> store;
+
+        // Se llama config.json (y no settings.json) para no chocar con el archivo del proyecto commands.
+        private static string ConfigFile { get { return AppPaths.Combine("config.json"); } }
+
+        private static string GroupName(String[] subkeys)
+        {
+            return String.Join("/", subkeys);
+        }
+
+        private static Dictionary<string, Dictionary<string, JsonElement>> Load()
+        {
+            if (store != null)
+                return store;
+
+            var result = new Dictionary<string, Dictionary<string, JsonElement>>(StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                if (File.Exists(ConfigFile))
+                {
+                    var raw = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, JsonElement>>>(File.ReadAllText(ConfigFile));
+
+                    if (raw != null)
+                        foreach (var group in raw)
+                            result[group.Key] = new Dictionary<string, JsonElement>(
+                                group.Value ?? new Dictionary<string, JsonElement>(), StringComparer.OrdinalIgnoreCase);
+                }
+            }
+            catch
+            {
+                // Archivo corrupto: se guarda una copia antes de sobrescribir.
+                try { File.Copy(ConfigFile, ConfigFile + ".corrupt", true); } catch { }
+            }
+
+            store = result;
+            return store;
+        }
+
+        private static bool Save()
+        {
+            try
+            {
+                Directory.CreateDirectory(AppPaths.Root);
+                string tmp = ConfigFile + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(store, new JsonSerializerOptions { WriteIndented = true }));
+                File.Move(tmp, ConfigFile, true); // escritura atómica
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static bool Has(String name, params String[] subkeys)
+        {
+            lock (sync)
+            {
+                Dictionary<string, JsonElement> group;
+                return Load().TryGetValue(GroupName(subkeys), out group) && group.ContainsKey(name);
+            }
+        }
+
         public static T Get<T>(String name, params String[] subkeys)
         {
-            String subpath = String.Empty;
+            Type type = typeof(T);
 
-            foreach (String str in subkeys)
-                subpath += "\\" + str;
+            if (Array.IndexOf(AcceptableTypes, type) < 0)
+                throw new Exception("Setting type not supported");
 
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + subpath);
-
-            if (key == null)
+            lock (sync)
             {
-                Registry.CurrentUser.CreateSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + subpath);
-                key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + subpath);
+                Dictionary<string, JsonElement> group;
+                JsonElement element;
+
+                if (Load().TryGetValue(GroupName(subkeys), out group) && group.TryGetValue(name, out element))
+                {
+                    try { return element.Deserialize<T>(); }
+                    catch { }
+                }
             }
 
-            if (key != null)
-            {
-                object value = key.GetValue(name);
-                key.Close();
-                Type type = typeof(T);
+            // Mismos valores por defecto que con el registro: 0, false, null y "".
+            if (type == typeof(String))
+                return (T)(object)String.Empty;
 
-                for (int i = 0; i < AcceptableTypes.Length; i++)
-                    if (AcceptableTypes[i].Equals(type))
-                        if (i <= 4)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(value, typeof(T));
-                            else
-                                return (T)Convert.ChangeType(0, typeof(T));
-                        }
-                        else if (i == 6)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(value, typeof(T));
-                            else
-                                return default(T);
-                        }
-                        else if (i == 5)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(Encoding.UTF8.GetString((byte[])value), typeof(T));
-                            else
-                                return (T)Convert.ChangeType(String.Empty, typeof(T));
-                        }
-                        else if (i == 7)
-                        {
-                            if (value != null)
-                                return (T)Convert.ChangeType(((int)value == 1), typeof(T));
-                            else
-                                return (T)Convert.ChangeType(false, typeof(T));
-                        }
-            }
-
-            throw new Exception("Registry value not found or invalid casting");
+            return default(T);
         }
 
         public static bool Set(String name, object value, params String[] subkeys)
         {
-            String subpath = String.Empty;
+            if (value == null || Array.IndexOf(AcceptableTypes, value.GetType()) < 0)
+                return false;
 
-            foreach (String str in subkeys)
-                subpath += "\\" + str;
-
-            RegistryKey key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + subpath, true);
-
-            if (key == null)
+            lock (sync)
             {
-                Registry.CurrentUser.CreateSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + subpath);
-                key = Registry.CurrentUser.OpenSubKey("Software\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + subpath, true);
-            }
+                var all = Load();
+                string key = GroupName(subkeys);
+                Dictionary<string, JsonElement> group;
 
-            Type type = value.GetType();
-
-            for (int i = 0; i < AcceptableTypes.Length; i++)
-            {
-                if (AcceptableTypes[i].Equals(type))
+                if (!all.TryGetValue(key, out group))
                 {
-                    if (i <= 4)
-                    {
-                        key.SetValue(name, value, RegistryValueKind.DWord);
-                        key.Close();
-                        return true;
-                    }
-                    else if (i == 5)
-                    {
-                        key.SetValue(name, Encoding.UTF8.GetBytes((String)value), RegistryValueKind.Binary);
-                        key.Close();
-                        return true;
-                    }
-                    else if (i == 6)
-                    {
-                        key.SetValue(name, value, RegistryValueKind.Binary);
-                        key.Close();
-                        return true;
-                    }
-                    else if (i == 7)
-                    {
-                        key.SetValue(name, ((bool)value ? (int)1 : (int)0), RegistryValueKind.DWord);
-                        key.Close();
-                        return true;
-                    }
+                    group = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+                    all[key] = group;
                 }
+
+                group[name] = JsonSerializer.SerializeToElement(value, value.GetType());
+                return Save();
             }
-
-            key.Close();
-            return false;
         }
-
         public static IPAddress LocalIP
         {
             get

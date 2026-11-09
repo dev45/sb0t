@@ -40,20 +40,19 @@ namespace core.Extensions
         {
             list = new ConcurrentDictionary<String, ExPlugin>();
 
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-               "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Extensions";
+            DataPath = AppPaths.Combine("Extensions");
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\";
+            DataPath += Path.DirectorySeparatorChar;
         }
 
         public static ExtensionFrontEnd LoadPlugin(String name)
         {
             try
             {
-                Assembly asm = Assembly.Load(File.ReadAllBytes(DataPath + name + "\\extension.dll"));
+                Assembly asm = Assembly.Load(File.ReadAllBytes(Path.Combine(DataPath, name, "extension.dll")));
                 Type type = asm.GetTypes().FirstOrDefault(x => x.GetInterface("iconnect.IExtension") != null);
 
                 if (type != null)

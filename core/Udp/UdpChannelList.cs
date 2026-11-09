@@ -60,13 +60,12 @@ namespace core.Udp
 
         public static void Start()
         {
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-               "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Dat";
+            DataPath = AppPaths.Combine("Dat");
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\roomsearch.dat";
+            DataPath = Path.Combine(DataPath, "roomsearch.dat");
 
             primary_list = new ConcurrentStack<UdpChannelItem>();
             terminate = false;

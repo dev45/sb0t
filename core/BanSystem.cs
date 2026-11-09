@@ -185,13 +185,12 @@ namespace core
         {
             LastAutoCleared = Helpers.UnixTime;
 
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-               "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Dat";
+            DataPath = AppPaths.Combine("Dat");
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\banned.dat";
+            DataPath = Path.Combine(DataPath, "banned.dat");
 
             if (!File.Exists(DataPath))
                 CreateDatabase();

@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -29,8 +29,7 @@ namespace core
     {
         public static void DoTasks()
         {
-            String path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                              "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\FILTER IMPORTER";
+            String path = AppPaths.Combine("FILTER IMPORTER");
 
             if (Directory.Exists(path))
             {

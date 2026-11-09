@@ -42,13 +42,12 @@ namespace core
 
         public static void Init()
         {
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Dat";
+            DataPath = AppPaths.Combine("Dat");
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\salt.dat";
+            DataPath = Path.Combine(DataPath, "salt.dat");
 
             if (!File.Exists(DataPath))
                 CreateDatabase();

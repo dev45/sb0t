@@ -35,13 +35,12 @@ namespace core.Linking
         {
             items = new List<TrustedLeafItem>();
 
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-               "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Dat";
+            DataPath = AppPaths.Combine("Dat");
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\trusted.dat";
+            DataPath = Path.Combine(DataPath, "trusted.dat");
 
             if (!File.Exists(DataPath))
                 CreateDatabase();

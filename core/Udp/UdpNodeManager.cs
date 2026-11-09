@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -37,13 +37,12 @@ namespace core.Udp
 
         public static void Initialize()
         {
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-               "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName;
+            DataPath = AppPaths.Root;
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\nodes.xml";
+            DataPath = Path.Combine(DataPath, "nodes.xml");
 
             if (!LoadList())
                 LoadDefaultList();

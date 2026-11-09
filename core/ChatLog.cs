@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -34,13 +34,12 @@ namespace core
                 {
                     DateTime d = DateTime.Now;
 
-                    String path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                                      "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\ChatLogs";
+                    String path = AppPaths.Combine("ChatLogs");
 
                     if (!Directory.Exists(path))
                         Directory.CreateDirectory(path);
 
-                    path += ("\\" + d.Day + " " + d.Month + " " + d.Year + ".txt");
+                    path = Path.Combine(path, d.Day + " " + d.Month + " " + d.Year + ".txt");
 
                     using (StreamWriter writer = File.Exists(path) ? File.AppendText(path) : File.CreateText(path))
                         writer.WriteLine(d.ToShortTimeString() + " " + text);

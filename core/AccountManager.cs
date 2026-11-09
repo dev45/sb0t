@@ -42,13 +42,12 @@ namespace core
 
         public static void LoadPasswords()
         {
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Dat";
+            DataPath = AppPaths.Combine("Dat");
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\accounts.dat";
+            DataPath = Path.Combine(DataPath, "accounts.dat");
 
             if (!File.Exists(DataPath))
                 CreateDatabase();

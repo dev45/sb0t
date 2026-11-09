@@ -121,14 +121,14 @@ namespace core
 
         public static void init()
         {
-            path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Dat";
+            path = AppPaths.Combine("Dat");
 
             if (!Directory.Exists(path))
             {
                 Directory.CreateDirectory(path);
             }
 
-            path += "\\ignores.dat";
+            path = Path.Combine(path, "ignores.dat");
 
             if (!File.Exists(path))
             {

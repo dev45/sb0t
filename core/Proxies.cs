@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -142,8 +142,7 @@ namespace core
             {
                 last = tmp;
 
-                String path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                                  "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\tor.dat";
+                String path = AppPaths.Combine("tor.dat");
 
                 if (File.Exists(path))
                 {
@@ -199,8 +198,7 @@ namespace core
                                     list.Add(ip);
                         }
 
-                        String path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                                          "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\tor.dat";
+                        String path = AppPaths.Combine("tor.dat");
 
                         try
                         {

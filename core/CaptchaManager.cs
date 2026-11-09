@@ -92,13 +92,12 @@ namespace core
 
         public static void Load()
         {
-            DataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-               "\\sb0t\\" + AppDomain.CurrentDomain.FriendlyName + "\\Dat";
+            DataPath = AppPaths.Combine("Dat");
 
             if (!Directory.Exists(DataPath))
                 Directory.CreateDirectory(DataPath);
 
-            DataPath += "\\captcha.dat";
+            DataPath = Path.Combine(DataPath, "captcha.dat");
 
             if (!File.Exists(DataPath))
                 CreateDatabase();

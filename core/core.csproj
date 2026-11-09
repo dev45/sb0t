@@ -33,4 +33,11 @@
     <PackageReference Include="WeCantSpell.Hunspell" Version="7.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Archivos que el proyecto original no compilaba -->
+    <Compile Remove="Linking\TrustedLeafItem.cs" />
+    <Compile Remove="Linking\TrustedLeavesManager.cs" />
+    <Compile Remove="LinkHub\LeafProcessor.cs" />
+  </ItemGroup>
+
 </Project>
