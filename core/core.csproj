@@ -18,9 +18,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Libraries\dictionary.aff" Link="dictionary.aff" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="Libraries\dictionary.dic" Link="dictionary.dic" CopyToOutputDirectory="PreserveNewest" />
-    <None Update="servers.dat" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Libraries\dictionary.aff" Link="dictionary.aff" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Libraries\dictionary.dic" Link="dictionary.dic" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="servers.dat" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

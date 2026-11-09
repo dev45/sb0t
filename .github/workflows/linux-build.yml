@@ -1,0 +1,41 @@
+name: linux-build
+on:
+  push:
+    branches: [migracion-net]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Compilar en Linux
+        run: dotnet build roomhost/roomhost.csproj -c Release
+
+      - name: Construir imagen
+        run: docker build -t areschat-room .
+
+      - name: Arrancar la sala y comprobar
+        run: |
+          docker run -d --name sala -p 5009:5009/tcp -e ROOM_NAME="Sala CI" -e ROOM_OWNER="clave-de-prueba-ci" areschat-room
+          sleep 20
+          echo "=== logs ==="
+          docker logs sala
+          echo "=== contenedor ==="
+          docker ps -a --filter name=sala
+          echo "=== puerto ==="
+          nc -z localhost 5009 && echo "PUERTO ABIERTO" || (echo "PUERTO CERRADO"; exit 1)
+          echo "=== archivos de la sala ==="
+          docker exec sala ls -R /data || true
+
+      - name: Parar con docker stop (debe cerrar limpio)
+        run: |
+          time docker stop sala
+          docker logs sala | tail -n 5
