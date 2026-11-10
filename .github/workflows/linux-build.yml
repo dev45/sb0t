@@ -43,6 +43,40 @@ jobs:
           time docker stop sala
           docker logs sala | tail -n 5
 
+      - name: Gestor con Docker real (crear, comprobar, parar, borrar sala)
+        env:
+          MANAGER_ADMIN_PASSWORD: ci-admin-password-1234
+          ROOM_IMAGE: areschat-room
+          ASPNETCORE_URLS: http://localhost:5080
+        run: |
+          dotnet build manager -c Release
+          dotnet run --project manager -c Release --no-build > manager.log 2>&1 &
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:5080/ && break; sleep 2; done
+
+          echo "=== sin sesion debe dar 401 ==="
+          curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5080/api/rooms
+
+          curl -sf -c jar -H 'Content-Type: application/json' -d '{"password":"ci-admin-password-1234"}' http://localhost:5080/api/login
+          echo "=== crear sala ==="
+          RESP=$(curl -sf -b jar -H 'Content-Type: application/json' -d '{"name":"Sala gestor","ownerPassword":"dueno-de-prueba-1"}' http://localhost:5080/api/rooms)
+          echo "$RESP"
+          ID=$(echo "$RESP" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+          sleep 20
+
+          echo "=== estado ==="
+          curl -sf -b jar http://localhost:5080/api/rooms; echo
+          echo "=== logs de la sala ==="
+          curl -sf -b jar "http://localhost:5080/api/rooms/$ID/logs?tail=20"
+          echo "=== puerto ==="
+          nc -z localhost 5009 && echo "PUERTO ABIERTO" || { echo "PUERTO CERRADO"; docker ps -a; cat manager.log; exit 1; }
+
+          echo "=== detener ==="
+          time curl -sf -b jar -X POST "http://localhost:5080/api/rooms/$ID/stop"
+          curl -sf -b jar http://localhost:5080/api/rooms; echo
+          echo "=== eliminar con datos ==="
+          curl -sf -b jar -X DELETE "http://localhost:5080/api/rooms/$ID?purge=true"
+          echo "contenedores restantes:"; docker ps -a --filter name=areschat-room-
+          echo "volumenes restantes:"; docker volume ls --filter name=areschat-room-data-
   publish:
     needs: build
     runs-on: ubuntu-latest

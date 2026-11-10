@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
 using manager;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
@@ -22,6 +23,7 @@ int portMax = int.Parse(Environment.GetEnvironmentVariable("MANAGER_PORT_MAX") ?
 bool fake = string.Equals(Environment.GetEnvironmentVariable("MANAGER_RUNTIME"), "fake", StringComparison.OrdinalIgnoreCase);
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(dataDir, "keys")));
 builder.Services.AddSingleton(new RoomStore(Path.Combine(dataDir, "manager.db")));
 
 if (fake)

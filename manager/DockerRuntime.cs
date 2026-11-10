@@ -38,9 +38,40 @@ public sealed class DockerRuntime : IRoomRuntime
     public async Task StartAsync(Room room)
     {
         if (await StatusAsync(room) == "sin crear")
+            await EnsureImageAsync();
             await CreateAsync(room);
 
         await client.Containers.StartContainerAsync(CName(room), new ContainerStartParameters());
+    }
+
+        private async Task EnsureImageAsync()
+    {
+        try
+        {
+            await client.Images.InspectImageAsync(image);
+            return;
+        }
+        catch (DockerImageNotFoundException) { }
+
+        int colon = image.LastIndexOf(':');
+        int slash = image.LastIndexOf('/');
+        string repo = colon > slash ? image[..colon] : image;
+        string tag = colon > slash ? image[(colon + 1)..] : "latest";
+
+        string? user = Environment.GetEnvironmentVariable("REGISTRY_USER");
+        string? token = Environment.GetEnvironmentVariable("REGISTRY_TOKEN");
+        var auth = new AuthConfig();
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            auth.Username = user;
+            auth.Password = token;
+        }
+
+        await client.Images.CreateImageAsync(
+            new ImagesCreateParameters { FromImage = repo, Tag = tag },
+            auth,
+            new Progress<JSONMessage>());
     }
 
     private async Task CreateAsync(Room room)
