@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestor de salas Ares</title>
+<style>
+  :root { color-scheme: light dark; --bd: #8884; --ac: #2563eb; }
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.4rem; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--bd); }
+  button { padding: .35rem .7rem; margin-right: .3rem; border: 1px solid var(--bd); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+  button.primary { background: var(--ac); color: #fff; border-color: var(--ac); }
+  input { padding: .4rem; margin-right: .4rem; border: 1px solid var(--bd); border-radius: 6px; background: transparent; color: inherit; }
+  pre { max-height: 22rem; overflow: auto; padding: .8rem; border: 1px solid var(--bd); border-radius: 6px; white-space: pre-wrap; }
+  .err { color: #dc2626; min-height: 1.2rem; }
+  fieldset { border: 1px solid var(--bd); border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>Gestor de salas Ares</h1>
+<p class="err" id="err"></p>
+
+<section id="login" hidden>
+  <input id="pw" type="password" placeholder="Contraseña de administrador" autocomplete="current-password">
+  <button class="primary" id="btnLogin">Entrar</button>
+</section>
+
+<section id="app" hidden>
+  <p><button id="btnLogout">Cerrar sesión</button> <button id="btnReload">Actualizar</button></p>
+  <table>
+    <thead><tr><th>Sala</th><th>Puerto</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <fieldset>
+    <legend>Nueva sala</legend>
+    <input id="newName" placeholder="Nombre de la sala" maxlength="60">
+    <input id="newOwner" type="password" placeholder="Contraseña de dueño (mín. 8)" autocomplete="new-password">
+    <button class="primary" id="btnCreate">Crear e iniciar</button>
+  </fieldset>
+
+  <h3 id="logTitle" hidden></h3>
+  <pre id="log" hidden></pre>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const setErr = m => { $('err').textContent = m || ''; };
+
+function show(loggedIn) {
+  $('login').hidden = loggedIn;
+  $('app').hidden = !loggedIn;
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch('/api' + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  if (r.status === 401) { show(false); throw new Error('Inicia sesión.'); }
+  const isJson = (r.headers.get('content-type') || '').includes('json');
+  const body = isJson ? await r.json() : await r.text();
+  if (!r.ok) throw new Error((body && body.error) || ('Error ' + r.status));
+  return body;
+}
+
+function button(label, onClick) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  b.onclick = async () => { setErr(''); try { await onClick(); } catch (e) { setErr(e.message); } };
+  return b;
+}
+
+async function load() {
+  const rooms = await api('/rooms');
+  const rows = $('rows');
+  rows.replaceChildren();
+
+  for (const r of rooms) {
+    const tr = document.createElement('tr');
+
+    for (const value of [r.name, r.port, r.status]) {
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    }
+
+    const actions = document.createElement('td');
+    actions.append(
+      button('Iniciar', async () => { await api('/rooms/' + r.id + '/start', { method: 'POST' }); await load(); }),
+      button('Detener', async () => { await api('/rooms/' + r.id + '/stop', { method: 'POST' }); await load(); }),
+      button('Logs', async () => {
+        const text = await api('/rooms/' + r.id + '/logs?tail=200');
+        $('logTitle').textContent = 'Logs de ' + r.name;
+        $('log').textContent = text || '(sin salida)';
+        $('logTitle').hidden = false;
+        $('log').hidden = false;
+      }),
+      button('Eliminar', async () => {
+        if (!confirm('¿Eliminar la sala "' + r.name + '"?')) return;
+        const purge = confirm('¿Borrar TAMBIÉN sus datos (usuarios, baneos, ajustes)? Aceptar = borrar todo. Cancelar = conservar los datos.');
+        await api('/rooms/' + r.id + '?purge=' + purge, { method: 'DELETE' });
+        await load();
+      })
+    );
+    tr.appendChild(actions);
+    rows.appendChild(tr);
+  }
+}
+
+$('btnLogin').onclick = async () => {
+  setErr('');
+  const r = await fetch('/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: $('pw').value })
+  });
+  if (r.status === 429) { setErr('Demasiados intentos. Espera un minuto.'); return; }
+  if (!r.ok) { setErr('Contraseña incorrecta.'); return; }
+  $('pw').value = '';
+  show(true);
+  try { await load(); } catch (e) { setErr(e.message); }
+};
+
+$('btnLogout').onclick = async () => { await fetch('/api/logout', { method: 'POST' }); show(false); };
+$('btnReload').onclick = () => load().catch(e => setErr(e.message));
+
+$('btnCreate').onclick = async () => {
+  setErr('');
+  try {
+    const res = await api('/rooms', {
+      method: 'POST',
+      body: JSON.stringify({ name: $('newName').value, ownerPassword: $('newOwner').value })
+    });
+    $('newName').value = '';
+    $('newOwner').value = '';
+    if (res.warning) setErr(res.warning);
+    await load();
+  } catch (e) { setErr(e.message); }
+};
+
+(async () => {
+  const r = await fetch('/api/me');
+  show(r.ok);
+  if (r.ok) load().catch(e => setErr(e.message));
+})();
+</script>
+</body>
+</html>
