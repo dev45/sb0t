@@ -1,0 +1,3 @@
+{$MANAGER_DOMAIN} {
+    reverse_proxy manager:8080
+}

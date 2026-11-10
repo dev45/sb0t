@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
@@ -131,22 +131,14 @@ public sealed class DockerRuntime : IRoomRuntime
         }
     }
 
-    private sealed class Collector : IProgress<string>
-    {
-        public readonly StringBuilder Text = new();
-        public void Report(string value) => Text.Append(value);
-    }
-
     public async Task<string> LogsAsync(Room room, int tail)
     {
-        var collector = new Collector();
+        var parameters = new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Tail = tail.ToString() };
+        var info = await client.Containers.InspectContainerAsync(CName(room));
 
-        await client.Containers.GetContainerLogsAsync(
-            CName(room),
-            new ContainerLogsParameters { ShowStdout = true, ShowStderr = true, Tail = tail.ToString() },
-            CancellationToken.None,
-            collector);
-
-        return collector.Text.ToString();
+        // Sin TTY, Docker mezcla stdout y stderr en un flujo con una cabecera de 8 bytes por bloque.
+        using var stream = await client.Containers.GetContainerLogsAsync(CName(room), info.Config.Tty, parameters, CancellationToken.None);
+        var (stdout, stderr) = await stream.ReadOutputToEndAsync(CancellationToken.None);
+        return stdout + stderr;
     }
 }

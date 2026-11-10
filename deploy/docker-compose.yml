@@ -1,0 +1,31 @@
+services:
+  manager:
+    image: ghcr.io/dev45/areschat-manager:latest
+    restart: unless-stopped
+    environment:
+      MANAGER_ADMIN_PASSWORD: ${MANAGER_ADMIN_PASSWORD:?Define MANAGER_ADMIN_PASSWORD en el archivo .env}
+      ROOM_IMAGE: ghcr.io/dev45/areschat-room:latest
+    volumes:
+      - manager-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Sin "ports": solo Caddy puede llegar al gestor.
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      MANAGER_DOMAIN: ${MANAGER_DOMAIN:?Define MANAGER_DOMAIN en el archivo .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - manager
+
+volumes:
+  manager-data:
+  caddy-data:
+  caddy-config:
