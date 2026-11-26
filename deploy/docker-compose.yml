@@ -5,6 +5,8 @@ services:
     environment:
       MANAGER_ADMIN_PASSWORD: ${MANAGER_ADMIN_PASSWORD:?Define MANAGER_ADMIN_PASSWORD en el archivo .env}
       ROOM_IMAGE: ghcr.io/dev45/areschat-room:latest
+      REGISTRY_USER: ${REGISTRY_USER:-}
+      REGISTRY_TOKEN: ${REGISTRY_TOKEN:-}
     volumes:
       - manager-data:/data
       - /var/run/docker.sock:/var/run/docker.sock
