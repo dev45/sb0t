@@ -36,6 +36,7 @@ namespace roomhost
                 return 1;
             }
 
+            var admin = AdminApi.StartIfConfigured(msg => Write(msg, null));
             ManualResetEventSlim stop = new ManualResetEventSlim(false);
             Console.CancelKeyPress += (s, e) => { e.Cancel = true; stop.Set(); };
 
@@ -44,6 +45,7 @@ namespace roomhost
                 stop.Wait();
 
             Write("Cerrando la sala...", null);
+            AdminApi.Stop(admin);
             server.Close();
             return 0;
         }

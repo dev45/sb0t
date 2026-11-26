@@ -43,6 +43,28 @@ jobs:
           time docker stop sala
           docker logs sala | tail -n 5
 
+      - name: API de administracion de la sala
+        run: |
+          T=token-de-prueba-ci-0123456789abcdef
+          docker run -d --name sala-admin -p 5010:5010 -p 8081:8081 \
+            -e ROOM_PORT=5010 -e ROOM_OWNER=dueno-de-prueba-ci -e ROOM_ADMIN_TOKEN=$T areschat-room
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:8081/admin/status && break; sleep 2; done
+
+          echo "=== sin token: debe dar 401 ==="
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/admin/status)" = "401"
+          echo "=== con token: estado ==="
+          curl -sf -H "Authorization: Bearer $T" http://localhost:8081/admin/status | tee status.json; echo
+          grep -q '"running":true' status.json
+          echo "=== ajuste no permitido (name): debe dar 400 ==="
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H "Authorization: Bearer $T" -H 'Content-Type: application/json' -d '{"name":"x"}' http://localhost:8081/admin/settings)" = "400"
+          echo "=== guardar tema ==="
+          curl -sf -X PUT -H "Authorization: Bearer $T" -H 'Content-Type: application/json' -d '{"topic":"tema desde la API","captcha":true}' http://localhost:8081/admin/settings; echo
+          docker restart sala-admin
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:8081/admin/status && break; sleep 2; done
+          echo "=== tras reiniciar el tema debe persistir ==="
+          curl -sf -H "Authorization: Bearer $T" http://localhost:8081/admin/status | tee status2.json; echo
+          grep -q 'tema desde la API' status2.json
+          docker rm -f sala-admin
       - name: Gestor con Docker real (crear, comprobar, parar, borrar sala)
         env:
           MANAGER_ADMIN_PASSWORD: ci-admin-password-1234
