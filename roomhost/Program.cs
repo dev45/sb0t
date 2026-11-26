@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Threading;
@@ -36,6 +37,7 @@ namespace roomhost
                 return 1;
             }
 
+            PrintJoinLinks();
             var admin = AdminApi.StartIfConfigured(msg => Write(msg, null));
             ManualResetEventSlim stop = new ManualResetEventSlim(false);
             Console.CancelKeyPress += (s, e) => { e.Cancel = true; stop.Set(); };
@@ -116,6 +118,53 @@ namespace roomhost
                     Write("No se pudo cargar la extensión: " + n, null);
                 else
                     Write("Extensión cargada: " + n, null);
+            }
+        }
+
+        /// <summary>Imprime los enlaces de entrada si defines ROOM_PUBLIC_HOST (y opcionalmente ROOM_PUBLIC_PORT).</summary>
+        private static void PrintJoinLinks()
+        {
+            string host = Environment.GetEnvironmentVariable("ROOM_PUBLIC_HOST");
+
+            if (String.IsNullOrWhiteSpace(host))
+                return;
+
+            ushort port = Settings.Port;
+            string portText = Environment.GetEnvironmentVariable("ROOM_PUBLIC_PORT");
+
+            if (!String.IsNullOrEmpty(portText) && !ushort.TryParse(portText, out port))
+            {
+                Write("ROOM_PUBLIC_PORT no es un puerto valido.", null);
+                return;
+            }
+
+            try
+            {
+                IPAddress ip;
+
+                if (!IPAddress.TryParse(host.Trim(), out ip))
+                    ip = Array.Find(Dns.GetHostAddresses(host.Trim()), a => a.AddressFamily == AddressFamily.InterNetwork);
+
+                if (ip == null)
+                {
+                    Write("No se pudo resolver " + host + " a una direccion IPv4.", null);
+                    return;
+                }
+
+                string link = core.Hashlink.EncodeHashlink(new core.Room { IP = ip, Name = Settings.Name, Port = port });
+
+                if (link == null)
+                {
+                    Write("No se pudo generar el enlace.", null);
+                    return;
+                }
+
+                Write("Enlace Ares: arlnk://" + link, null);
+                Write("Enlace cb0t: cb0t://" + link, null);
+            }
+            catch (Exception e)
+            {
+                Write("No se pudo generar el enlace: " + e.Message, null);
             }
         }
 
