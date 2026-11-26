@@ -1,4 +1,4 @@
-/*
+﻿/*
     sb0t ares chat server
     Copyright (C) 2017  AresChat
 
@@ -85,6 +85,7 @@ namespace core
 
         public static void CycleTick()
         {
+            RoomControl.Drain();
             if (DefaultCommands)
                 cmds.CycleTick();
 

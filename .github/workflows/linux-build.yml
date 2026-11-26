@@ -65,6 +65,36 @@ jobs:
           curl -sf -H "Authorization: Bearer $T" http://localhost:8081/admin/status | tee status2.json; echo
           grep -q 'tema desde la API' status2.json
           docker rm -f sala-admin
+      - name: API de administracion - usuarios, bans, tema y anuncios
+        run: |
+          T=token-de-prueba-ci-0123456789abcdef
+          H="Authorization: Bearer $T"
+          docker run -d --name sala-admin2 -p 5011:5011 -p 8082:8082 \
+            -e ROOM_PORT=5011 -e ROOM_OWNER=dueno-de-prueba-ci -e ROOM_ADMIN_TOKEN=$T \
+            -e ROOM_ADMIN_URL=http://0.0.0.0:8082 areschat-room
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:8082/admin/status && break; sleep 2; done
+          sleep 5
+
+          echo "=== usuarios (debe ser []) ==="
+          test "$(curl -sf -H "$H" http://localhost:8082/admin/users)" = "[]"
+          echo "=== bans (debe ser []) ==="
+          test "$(curl -sf -H "$H" http://localhost:8082/admin/bans)" = "[]"
+          echo "=== estadisticas ==="
+          curl -sf -H "$H" http://localhost:8082/admin/stats; echo
+          echo "=== cambiar el tema en vivo (usa la cola del hilo del servidor) ==="
+          curl -sf -X PUT -H "$H" -H 'Content-Type: application/json' -d '{"text":"tema en vivo desde la API"}' http://localhost:8082/admin/topic; echo
+          curl -sf -H "$H" http://localhost:8082/admin/status | grep -q 'tema en vivo desde la API'
+          echo "=== anuncio sin usuarios (debe enviar a 0) ==="
+          curl -sf -X POST -H "$H" -H 'Content-Type: application/json' -d '{"text":"hola a todos"}' http://localhost:8082/admin/announce | tee ann.json; echo
+          grep -q '"sent":0' ann.json
+          echo "=== expulsar un usuario inexistente: 404 ==="
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$H" http://localhost:8082/admin/users/4242/kick)" = "404"
+          echo "=== desbanear algo inexistente: 404 ==="
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "$H" -H 'Content-Type: application/json' -d '{"id":"x"}' http://localhost:8082/admin/bans/unban)" = "404"
+          echo "=== tema demasiado corto: 400 ==="
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X PUT -H "$H" -H 'Content-Type: application/json' -d '{"text":"x"}' http://localhost:8082/admin/topic)" = "400"
+          docker logs sala-admin2 | tail -n 10
+          docker rm -f sala-admin2
       - name: Gestor con Docker real (crear, comprobar, parar, borrar sala)
         env:
           MANAGER_ADMIN_PASSWORD: ci-admin-password-1234

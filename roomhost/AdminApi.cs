@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using core;
+using iconnect;
 
 namespace roomhost
 {
@@ -166,6 +167,137 @@ namespace roomhost
                     }
                 });
 
+                app.MapGet("/admin/users", async Task<IResult> () =>
+                {
+                    var r = await RoomControl.RunAsync(() =>
+                    {
+                        var list = new List<Dictionary<string, object>>();
+                        RoomControl.Users.Ares(u => list.Add(Describe(u, "ares")));
+                        RoomControl.Users.Web(u => list.Add(Describe(u, "web")));
+                        return list;
+                    });
+
+                    return Answer(r);
+                });
+
+                app.MapPost("/admin/users/{id}/kick", async Task<IResult> (ushort id, string kind) => await UserAction(id, kind, false));
+                app.MapPost("/admin/users/{id}/ban", async Task<IResult> (ushort id, string kind) => await UserAction(id, kind, true));
+
+                app.MapGet("/admin/bans", async Task<IResult> () =>
+                {
+                    var r = await RoomControl.RunAsync(() =>
+                    {
+                        var list = new List<Dictionary<string, object>>();
+                        RoomControl.Users.Banned(b => list.Add(new Dictionary<string, object>
+                        {
+                            ["id"] = BanId(b),
+                            ["name"] = b.Name,
+                            ["version"] = b.Version,
+                            ["ip"] = b.ExternalIP == null ? null : b.ExternalIP.ToString(),
+                            ["localIp"] = b.LocalIP == null ? null : b.LocalIP.ToString(),
+                            ["port"] = b.Port,
+                            ["guid"] = b.Guid.ToString()
+                        }));
+                        return list;
+                    });
+
+                    return Answer(r);
+                });
+
+                app.MapPost("/admin/bans/unban", async Task<IResult> (HttpRequest req) =>
+                {
+                    var (id, bad) = await ReadText(req, "id", 1, 300);
+
+                    if (bad != null)
+                        return bad;
+
+                    var r = await RoomControl.RunAsync(() =>
+                    {
+                        var matches = new List<IBan>();
+                        RoomControl.Users.Banned(b => { if (BanId(b) == id) matches.Add(b); });
+
+                        // Se desbanea fuera del recorrido, por si la lista se modifica al desbanear.
+                        foreach (IBan b in matches)
+                            b.Unban();
+
+                        return matches.Count;
+                    });
+
+                    if (!r.Completed || r.Error != null)
+                        return Answer(r);
+
+                    if (r.Value == 0)
+                        return Results.Json(Error("Ban no encontrado"), statusCode: 404);
+
+                    return Results.Json(new Dictionary<string, object> { ["unbanned"] = r.Value });
+                });
+
+                app.MapPut("/admin/topic", async Task<IResult> (HttpRequest req) =>
+                {
+                    var (text, bad) = await ReadText(req, "text", 2, 200);
+
+                    if (bad != null)
+                        return bad;
+
+                    var r = await RoomControl.RunAsync(() =>
+                    {
+                        RoomControl.Room.Topic = text;
+                        return RoomControl.Room.Topic;
+                    });
+
+                    if (!r.Completed || r.Error != null)
+                        return Answer(r);
+
+                    return Results.Json(new Dictionary<string, object> { ["topic"] = r.Value });
+                });
+
+                app.MapPost("/admin/announce", async Task<IResult> (HttpRequest req) =>
+                {
+                    var (text, bad) = await ReadText(req, "text", 1, 400);
+
+                    if (bad != null)
+                        return bad;
+
+                    var r = await RoomControl.RunAsync(() =>
+                    {
+                        int sent = 0;
+                        Action<IUser> send = u => { u.Print(text); sent++; };
+                        RoomControl.Users.Ares(send);
+                        RoomControl.Users.Web(send);
+                        return sent;
+                    });
+
+                    if (!r.Completed || r.Error != null)
+                        return Answer(r);
+
+                    return Results.Json(new Dictionary<string, object> { ["sent"] = r.Value });
+                });
+
+                app.MapGet("/admin/stats", async Task<IResult> () =>
+                {
+                    var r = await RoomControl.RunAsync(() =>
+                    {
+                        IStats s = RoomControl.Stats;
+
+                        return new Dictionary<string, object>
+                        {
+                            ["dataReceived"] = s.DataReceived,
+                            ["dataSent"] = s.DataSent,
+                            ["publicMessages"] = s.PublicMessages,
+                            ["privateMessages"] = s.PrivateMessages,
+                            ["invalidLoginAttempts"] = s.InvalidLoginAttempts,
+                            ["floodCount"] = s.FloodCount,
+                            ["rejectionCount"] = s.RejectionCount,
+                            ["joinCount"] = s.JoinCount,
+                            ["partCount"] = s.PartCount,
+                            ["peakUserCount"] = s.PeakUserCount,
+                            ["currentUserCount"] = s.CurrentUserCount
+                        };
+                    });
+
+                    return Answer(r);
+                });
+
                 app.StartAsync().GetAwaiter().GetResult();
                 log("API de administracion escuchando en " + url);
                 return app;
@@ -246,6 +378,118 @@ namespace roomhost
 
             value = s;
             return true;
+        }
+
+        private static Dictionary<string, object> Describe(IUser u, string kind)
+        {
+            return new Dictionary<string, object>
+            {
+                ["id"] = u.ID,
+                ["kind"] = kind,
+                ["name"] = u.Name,
+                ["ip"] = u.ExternalIP == null ? null : u.ExternalIP.ToString(),
+                ["level"] = u.Level.ToString(),
+                ["owner"] = u.Owner,
+                ["muzzled"] = u.Muzzled,
+                ["cloaked"] = u.Cloaked,
+                ["quarantined"] = u.Quarantined,
+                ["connected"] = u.Connected,
+                ["version"] = u.Version,
+                ["joinTime"] = u.JoinTime
+            };
+        }
+
+        private static string BanId(IBan b)
+        {
+            return b.Guid + "|" + b.ExternalIP + "|" + b.Port;
+        }
+
+        private static IResult Answer<T>(RoomControl.Result<T> r)
+        {
+            if (r.Completed && r.Error == null)
+                return Results.Json(r.Value);
+
+            return Results.Json(Error(r.Completed ? "Error interno: " + r.Error : r.Error), statusCode: 503);
+        }
+
+        private static async Task<IResult> UserAction(ushort id, string kind, bool ban)
+        {
+            string k = (kind ?? "").ToLowerInvariant();
+
+            if (k != "" && k != "ares" && k != "web")
+                return Results.Json(Error("kind debe ser ares o web"), statusCode: 400);
+
+            var r = await RoomControl.RunAsync(() =>
+            {
+                IUser found = null;
+                Action<IUser> look = u => { if (found == null && u.ID == id) found = u; };
+
+                if (k != "web") RoomControl.Users.Ares(look);
+                if (k != "ares") RoomControl.Users.Web(look);
+
+                if (found == null)
+                    return "notfound";
+
+                if (found.Owner)
+                    return "owner";
+
+                string name = found.Name;
+
+                if (ban)
+                {
+                    found.Ban();
+
+                    // No se sabe si Ban() tambien desconecta: si sigue conectado, se desconecta.
+                    if (found.Connected)
+                        found.Disconnect();
+                }
+                else
+                    found.Disconnect();
+
+                return "ok:" + name;
+            });
+
+            if (!r.Completed || r.Error != null)
+                return Answer(r);
+
+            if (r.Value == "notfound")
+                return Results.Json(Error("Usuario no encontrado"), statusCode: 404);
+
+            if (r.Value == "owner")
+                return Results.Json(Error("No se puede expulsar ni banear al dueno de la sala"), statusCode: 400);
+
+            return Results.Json(new Dictionary<string, object> { ["ok"] = true, ["name"] = r.Value.Substring(3) });
+        }
+
+        private static async Task<(string, IResult)> ReadText(HttpRequest req, string field, int min, int max)
+        {
+            if (req.ContentLength == null || req.ContentLength > 4096)
+                return (null, Results.Json(Error("Cuerpo ausente o demasiado grande"), statusCode: 413));
+
+            JsonDocument doc;
+
+            try { doc = await JsonDocument.ParseAsync(req.Body); }
+            catch (JsonException) { return (null, Results.Json(Error("JSON no valido"), statusCode: 400)); }
+
+            using (doc)
+            {
+                JsonElement el;
+
+                if (doc.RootElement.ValueKind != JsonValueKind.Object
+                    || !doc.RootElement.TryGetProperty(field, out el)
+                    || el.ValueKind != JsonValueKind.String)
+                    return (null, Results.Json(Error("Falta el campo de texto '" + field + "'"), statusCode: 400));
+
+                string s = (el.GetString() ?? "").Trim();
+
+                if (s.Length < min || s.Length > max)
+                    return (null, Results.Json(Error("'" + field + "' debe tener entre " + min + " y " + max + " caracteres"), statusCode: 400));
+
+                if (s.Any(Char.IsControl))
+                    return (null, Results.Json(Error("'" + field + "' no puede tener saltos de linea ni caracteres de control"), statusCode: 400));
+
+                return (s, null);
+            }
         }
 
         private static bool SafeEquals(string a, string b)
