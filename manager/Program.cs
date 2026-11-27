@@ -1,12 +1,13 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.RateLimiting;
 using manager;
-using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 
 string adminPassword = Environment.GetEnvironmentVariable("MANAGER_ADMIN_PASSWORD") ?? "";
@@ -72,6 +73,14 @@ static bool SafeEquals(string a, string b) =>
     CryptographicOperations.FixedTimeEquals(
         SHA256.HashData(Encoding.UTF8.GetBytes(a)),
         SHA256.HashData(Encoding.UTF8.GetBytes(b)));
+
+// Lista cerrada de rutas de la API de la sala que el gestor deja pasar.
+var adminRoutes = new (string Method, Regex Path)[]
+{
+    ("GET", new Regex(@"^(status|settings|users|bans|stats)$", RegexOptions.CultureInvariant)),
+    ("PUT", new Regex(@"^(settings|topic)$", RegexOptions.CultureInvariant)),
+    ("POST", new Regex(@"^(announce|bans/unban|users/[0-9]{1,5}/(kick|ban))$", RegexOptions.CultureInvariant))
+};
 
 app.MapPost("/api/login", async (HttpContext ctx, LoginDto dto) =>
 {
@@ -141,6 +150,8 @@ api.MapPost("/rooms/{id}/start", async (string id, RoomStore store, IRoomRuntime
     if (room is null)
         return Results.NotFound();
 
+    room = store.EnsureToken(room);
+
     try { await rt.StartAsync(room); }
     catch (Exception e) { return Results.BadRequest(new { error = e.Message }); }
 
@@ -183,6 +194,39 @@ api.MapGet("/rooms/{id}/logs", async (string id, int? tail, RoomStore store, IRo
 
     try { return Results.Text(await rt.LogsAsync(room, Math.Clamp(tail ?? 200, 1, 2000))); }
     catch (Exception e) { return Results.BadRequest(new { error = e.Message }); }
+});
+
+// Panel por sala: reenvia a la API de administracion de la sala, solo las rutas permitidas.
+api.MapMethods("/rooms/{id}/admin/{**path}", new[] { "GET", "PUT", "POST" }, async (string id, string path, string? kind, HttpRequest req, RoomStore store, IRoomRuntime rt) =>
+{
+    var room = store.Get(id);
+
+    if (room is null)
+        return Results.NotFound();
+
+    if (!adminRoutes.Any(r => r.Method == req.Method && r.Path.IsMatch(path)))
+        return Results.NotFound(new { error = "Ruta no permitida" });
+
+    if (kind is not null && kind != "ares" && kind != "web")
+        return Results.BadRequest(new { error = "kind debe ser ares o web" });
+
+    string? body = null;
+
+    if (req.Method != "GET")
+    {
+        using var reader = new StreamReader(req.Body, Encoding.UTF8);
+        var buffer = new char[16385];
+        int n = await reader.ReadBlockAsync(buffer, 0, buffer.Length);
+
+        if (n > 16384)
+            return Results.Json(new { error = "Cuerpo demasiado grande" }, statusCode: 413);
+
+        body = n > 0 ? new string(buffer, 0, n) : null;
+    }
+
+    string target = kind is null ? path : path + "?kind=" + kind;
+    var (status, text) = await rt.AdminAsync(room, req.Method, target, body);
+    return Results.Text(text, "application/json", Encoding.UTF8, status);
 });
 
 app.Run();

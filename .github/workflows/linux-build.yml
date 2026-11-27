@@ -125,6 +125,16 @@ jobs:
           echo "=== puerto ==="
           nc -z localhost 5009 && echo "PUERTO ABIERTO" || { echo "PUERTO CERRADO"; docker ps -a; cat manager.log; exit 1; }
 
+          echo "=== panel por sala: estado a traves del gestor ==="
+          curl -sf -b jar "http://localhost:5080/api/rooms/$ID/admin/status" | tee astatus.json; echo
+          grep -q '"running":true' astatus.json
+          echo "=== panel por sala: cambiar el tema y leerlo ==="
+          curl -sf -b jar -X PUT -H 'Content-Type: application/json' -d '{"text":"tema desde el gestor"}' "http://localhost:5080/api/rooms/$ID/admin/topic"; echo
+          curl -sf -b jar "http://localhost:5080/api/rooms/$ID/admin/status" | grep -q 'tema desde el gestor'
+          echo "=== panel por sala: ruta no permitida debe dar 404 ==="
+          test "$(curl -s -o /dev/null -w '%{http_code}' -b jar "http://localhost:5080/api/rooms/$ID/admin/nada")" = "404"
+          echo "=== panel por sala: sin sesion debe dar 401 ==="
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:5080/api/rooms/$ID/admin/status")" = "401"
           echo "=== detener ==="
           time curl -sf -b jar -X POST "http://localhost:5080/api/rooms/$ID/stop"
           curl -sf -b jar http://localhost:5080/api/rooms; echo

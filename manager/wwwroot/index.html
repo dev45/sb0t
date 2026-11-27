@@ -6,21 +6,25 @@
 <title>Gestor de salas Ares</title>
 <style>
   :root { color-scheme: light dark; --bd: #8884; --ac: #2563eb; }
-  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
   h1 { font-size: 1.4rem; }
+  h2 { font-size: 1.15rem; }
   table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
-  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--bd); }
-  button { padding: .35rem .7rem; margin-right: .3rem; border: 1px solid var(--bd); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
+  th, td { text-align: left; padding: .45rem; border-bottom: 1px solid var(--bd); vertical-align: middle; }
+  button { padding: .35rem .7rem; margin: .15rem .3rem .15rem 0; border: 1px solid var(--bd); border-radius: 6px; background: transparent; color: inherit; cursor: pointer; }
   button.primary { background: var(--ac); color: #fff; border-color: var(--ac); }
-  input { padding: .4rem; margin-right: .4rem; border: 1px solid var(--bd); border-radius: 6px; background: transparent; color: inherit; }
+  input[type=text], input[type=password], input[type=number] { padding: .4rem; margin: .15rem .4rem .15rem 0; border: 1px solid var(--bd); border-radius: 6px; background: transparent; color: inherit; }
   pre { max-height: 22rem; overflow: auto; padding: .8rem; border: 1px solid var(--bd); border-radius: 6px; white-space: pre-wrap; }
   .err { color: #dc2626; min-height: 1.2rem; }
+  .ok { color: #16a34a; min-height: 1.2rem; }
   fieldset { border: 1px solid var(--bd); border-radius: 8px; }
+  #admin { margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--bd); }
 </style>
 </head>
 <body>
 <h1>Gestor de salas Ares</h1>
 <p class="err" id="err"></p>
+<p class="ok" id="ok"></p>
 
 <section id="login" hidden>
   <input id="pw" type="password" placeholder="Contraseña de administrador" autocomplete="current-password">
@@ -36,18 +40,25 @@
 
   <fieldset>
     <legend>Nueva sala</legend>
-    <input id="newName" placeholder="Nombre de la sala" maxlength="60">
+    <input id="newName" type="text" placeholder="Nombre de la sala" maxlength="60">
     <input id="newOwner" type="password" placeholder="Contraseña de dueño (mín. 8)" autocomplete="new-password">
     <button class="primary" id="btnCreate">Crear e iniciar</button>
   </fieldset>
 
   <h3 id="logTitle" hidden></h3>
   <pre id="log" hidden></pre>
+
+  <section id="admin" hidden>
+    <h2 id="adminTitle"></h2>
+    <div id="tabs"></div>
+    <div id="panel"></div>
+  </section>
 </section>
 
 <script>
 const $ = id => document.getElementById(id);
 const setErr = m => { $('err').textContent = m || ''; };
+const setOk = m => { $('ok').textContent = m || ''; };
 
 function show(loggedIn) {
   $('login').hidden = loggedIn;
@@ -63,12 +74,37 @@ async function api(path, opts = {}) {
   return body;
 }
 
+function mk(tag, text) {
+  const e = document.createElement(tag);
+  if (text !== undefined && text !== null) e.textContent = String(text);
+  return e;
+}
+
 function button(label, onClick) {
-  const b = document.createElement('button');
-  b.textContent = label;
-  b.onclick = async () => { setErr(''); try { await onClick(); } catch (e) { setErr(e.message); } };
+  const b = mk('button', label);
+  b.onclick = async () => { setErr(''); setOk(''); try { await onClick(); } catch (e) { setErr(e.message); } };
   return b;
 }
+
+function tableOf(headers, rows) {
+  const t = mk('table');
+  const hr = mk('tr');
+  for (const h of headers) hr.appendChild(mk('th', h));
+  t.appendChild(hr);
+  for (const row of rows) {
+    const tr = mk('tr');
+    for (const c of row) {
+      const td = mk('td');
+      if (c instanceof Node) td.appendChild(c);
+      else td.textContent = (c === null || c === undefined) ? '' : String(c);
+      tr.appendChild(td);
+    }
+    t.appendChild(tr);
+  }
+  return t;
+}
+
+/* ---------- Lista de salas ---------- */
 
 async function load() {
   const rooms = await api('/rooms');
@@ -76,16 +112,12 @@ async function load() {
   rows.replaceChildren();
 
   for (const r of rooms) {
-    const tr = document.createElement('tr');
+    const tr = mk('tr');
+    for (const value of [r.name, r.port, r.status]) tr.appendChild(mk('td', value));
 
-    for (const value of [r.name, r.port, r.status]) {
-      const td = document.createElement('td');
-      td.textContent = value;
-      tr.appendChild(td);
-    }
-
-    const actions = document.createElement('td');
+    const actions = mk('td');
     actions.append(
+      button('Administrar', async () => openAdmin(r)),
       button('Iniciar', async () => { await api('/rooms/' + r.id + '/start', { method: 'POST' }); await load(); }),
       button('Detener', async () => { await api('/rooms/' + r.id + '/stop', { method: 'POST' }); await load(); }),
       button('Logs', async () => {
@@ -99,6 +131,7 @@ async function load() {
         if (!confirm('¿Eliminar la sala "' + r.name + '"?')) return;
         const purge = confirm('¿Borrar TAMBIÉN sus datos (usuarios, baneos, ajustes)? Aceptar = borrar todo. Cancelar = conservar los datos.');
         await api('/rooms/' + r.id + '?purge=' + purge, { method: 'DELETE' });
+        if (cur && cur.id === r.id) { cur = null; $('admin').hidden = true; }
         await load();
       })
     );
@@ -106,6 +139,150 @@ async function load() {
     rows.appendChild(tr);
   }
 }
+
+/* ---------- Panel de administración de una sala ---------- */
+
+let cur = null;
+const aapi = (path, opts) => api('/rooms/' + cur.id + '/admin/' + path, opts);
+
+function openAdmin(room) {
+  cur = room;
+  $('adminTitle').textContent = 'Administrar: ' + room.name;
+  $('admin').hidden = false;
+
+  const bar = $('tabs');
+  bar.replaceChildren();
+
+  for (const [name, fn] of Object.entries(tabs))
+    bar.appendChild(button(name, async () => { await fn(); }));
+
+  showStatus().catch(e => setErr(e.message));
+}
+
+async function showStatus() {
+  const status = await aapi('status');
+  const stats = await aapi('stats');
+  $('panel').replaceChildren(tableOf(['Dato', 'Valor'], [...Object.entries(status), ...Object.entries(stats)]));
+}
+
+async function showUsers() {
+  const users = await aapi('users');
+  const panel = $('panel');
+
+  if (!users.length) { panel.replaceChildren(mk('p', 'No hay usuarios conectados.')); return; }
+
+  const rows = users.map(u => {
+    const acts = mk('span');
+
+    if (!u.owner) {
+      acts.append(
+        button('Expulsar', async () => {
+          if (!confirm('¿Expulsar a ' + u.name + '?')) return;
+          await aapi('users/' + u.id + '/kick?kind=' + u.kind, { method: 'POST' });
+          await showUsers();
+        }),
+        button('Banear', async () => {
+          if (!confirm('¿Banear a ' + u.name + '?')) return;
+          await aapi('users/' + u.id + '/ban?kind=' + u.kind, { method: 'POST' });
+          await showUsers();
+        })
+      );
+    }
+
+    return [u.name, u.ip, u.level + (u.owner ? ' (dueño)' : ''), u.version, u.kind, acts];
+  });
+
+  panel.replaceChildren(tableOf(['Nombre', 'IP', 'Nivel', 'Cliente', 'Tipo', 'Acciones'], rows));
+}
+
+async function showBans() {
+  const bans = await aapi('bans');
+  const panel = $('panel');
+
+  if (!bans.length) { panel.replaceChildren(mk('p', 'No hay usuarios baneados.')); return; }
+
+  const rows = bans.map(b => [
+    b.name, b.ip, b.version,
+    button('Quitar ban', async () => {
+      await aapi('bans/unban', { method: 'POST', body: JSON.stringify({ id: b.id }) });
+      await showBans();
+    })
+  ]);
+
+  panel.replaceChildren(tableOf(['Nombre', 'IP', 'Cliente', 'Acciones'], rows));
+}
+
+async function showSettings() {
+  const list = await aapi('settings');
+  const box = mk('div');
+  const t = mk('table');
+  const inputs = [];
+
+  for (const s of list) {
+    const tr = mk('tr');
+    tr.appendChild(mk('td', s.id));
+
+    const input = document.createElement('input');
+    if (s.type === 'bool') { input.type = 'checkbox'; input.checked = !!s.value; }
+    else if (s.type === 'number') { input.type = 'number'; input.value = s.value; }
+    else { input.type = 'text'; input.maxLength = 500; input.value = (s.value === null || s.value === undefined) ? '' : s.value; }
+
+    const td = mk('td');
+    td.appendChild(input);
+    tr.appendChild(td);
+    t.appendChild(tr);
+    inputs.push({ s, input });
+  }
+
+  box.appendChild(t);
+  box.appendChild(button('Guardar cambios', async () => {
+    const changes = {};
+
+    for (const { s, input } of inputs) {
+      const v = s.type === 'bool' ? input.checked : s.type === 'number' ? Number(input.value) : input.value;
+      if (v !== s.value) changes[s.id] = v;
+    }
+
+    const count = Object.keys(changes).length;
+    if (!count) { setOk('No hay cambios.'); return; }
+
+    await aapi('settings', { method: 'PUT', body: JSON.stringify(changes) });
+    setOk('Guardado (' + count + '). Detén e inicia la sala para aplicar los cambios.');
+    await showSettings();
+  }));
+
+  $('panel').replaceChildren(box);
+}
+
+function showTalk() {
+  const topic = document.createElement('input');
+  topic.type = 'text'; topic.maxLength = 200; topic.placeholder = 'Nuevo tema (2-200 caracteres)';
+  topic.size = 50;
+
+  const ann = document.createElement('input');
+  ann.type = 'text'; ann.maxLength = 400; ann.placeholder = 'Anuncio para todos los usuarios';
+  ann.size = 50;
+
+  const box = mk('div');
+  box.append(
+    mk('h3', 'Tema de la sala'), topic,
+    button('Cambiar tema', async () => {
+      await aapi('topic', { method: 'PUT', body: JSON.stringify({ text: topic.value }) });
+      setOk('Tema cambiado.');
+    }),
+    mk('h3', 'Anuncio'), ann,
+    button('Enviar anuncio', async () => {
+      const r = await aapi('announce', { method: 'POST', body: JSON.stringify({ text: ann.value }) });
+      setOk('Anuncio enviado a ' + r.sent + ' usuario(s).');
+    })
+  );
+
+  $('panel').replaceChildren(box);
+}
+
+const tabs = { 'Estado': showStatus, 'Usuarios': showUsers, 'Bans': showBans, 'Ajustes': showSettings, 'Tema y anuncios': showTalk };
+
+/* ---------- Sesión y alta de salas ---------- */
 
 $('btnLogin').onclick = async () => {
   setErr('');
@@ -125,7 +302,7 @@ $('btnLogout').onclick = async () => { await fetch('/api/logout', { method: 'POS
 $('btnReload').onclick = () => load().catch(e => setErr(e.message));
 
 $('btnCreate').onclick = async () => {
-  setErr('');
+  setErr(''); setOk('');
   try {
     const res = await api('/rooms', {
       method: 'POST',
