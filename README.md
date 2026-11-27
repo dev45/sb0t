@@ -47,22 +47,24 @@ Para entrar como dueño escribe `/login TU_CLAVE` en el chat. Comprueba las piez
 | `ROOM_EXTENSIONS` | Extensiones a cargar, separadas por comas |
 
 ## Con Docker
-docker run -d --name sala --restart unless-stopped
--p 5009:5009/tcp -p 5009:5009/udp
--e ROOM_NAME="Mi sala" -e ROOM_OWNER="una-clave-larga"
--v sala-datos:/data ghcr.io/dev45/areschat-room:latest
 
+```
+docker run -d --name sala --restart unless-stopped \
+  -p 5009:5009/tcp -p 5009:5009/udp \
+  -e ROOM_NAME="Mi sala" -e ROOM_OWNER="una-clave-larga" \
+  -v sala-datos:/data ghcr.io/dev45/areschat-room:latest
+```
 ## Gestor web
 
 El gestor controla Docker, así que quien entre al panel administra el servidor entero. Publícalo solo detrás de HTTPS.
 
+```
 cd deploy
-cp .env.example .env # pon MANAGER_DOMAIN y una MANAGER_ADMIN_PASSWORD larga
+cp .env.example .env     # pon MANAGER_DOMAIN y una MANAGER_ADMIN_PASSWORD larga
 docker compose up -d
-
+```
 
 Abre los puertos 80 y 443, y 5009-5100 (TCP y UDP) en el firewall del sistema y en el del proveedor. Para desarrollar sin Docker, usa `MANAGER_RUNTIME=fake` (simula las salas) o `MANAGER_RUNTIME=local` (administra una sala que ya corre en tu PC).
-
 ## Limitaciones conocidas
 
 - Con CGNAT no se puede alojar una sala en casa: hace falta IP pública o un servidor.
