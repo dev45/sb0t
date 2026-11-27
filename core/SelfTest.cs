@@ -16,6 +16,7 @@ namespace core
             ok &= Check("SkiaSharp nativo (imagen JPEG)", Skia, null);
             ok &= Check("Corrector ortografico (Hunspell)", Spell, null);
             ok &= Check("Jurassic (JavaScript a IL)", Script, "42");
+            ok &= Check("Recursos incrustados", EmbeddedSizes, null);
 
             Console.WriteLine(ok ? "AUTOPRUEBA: TODO CORRECTO" : "AUTOPRUEBA: HAY FALLOS");
             return ok;
@@ -79,6 +80,11 @@ namespace core
             string corrected = SpellCheck.Correct("helo wrld");
             bool good = SpellCheck.Confirm("hello world");
             return "Correct('helo wrld')='" + corrected + "', Confirm('hello world')=" + good;
+        }
+
+        private static string EmbeddedSizes()
+        {
+            return "fi=" + Resource1.fi.Length + " sb0t=" + Resource1.sb0t.Length + " template=" + Resource1.template.Length + " web=" + Resource1.web.Length;
         }
 
         private static string Script()
