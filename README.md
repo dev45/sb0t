@@ -73,3 +73,11 @@ Abre los puertos 80 y 443, y 5009-5100 (TCP y UDP) en el firewall del sistema y 
 - Las extensiones C# antiguas (compiladas contra .NET Framework) probablemente no cargan; los scripts de JavaScript sí.
 - Falta probar con clientes reales en Linux: UDP y lista de salas, scripts y avatares.
 - cb0t 3.36 se queda congelado al entrar en una sala (también en otra sala pública); el cliente Ares funciona.
+
+## Créditos y licencia
+
+Este proyecto es un port no oficial de [sb0t](https://github.com/AresChat/sb0t), Copyright (C) 2017 AresChat, publicado bajo la licencia GNU Affero General Public License v3 (ver `license.txt`).
+
+Modificado a partir de noviembre de 2026: migración a .NET 9, eliminación de la interfaz gráfica de Windows, almacenamiento de ajustes en JSON, API de administración por sala y gestor web con Docker. Jurassic se usa en una rama propia (`net9-port`) de [AresChat/jurassic](https://github.com/AresChat/jurassic).
+
+No está afiliado ni respaldado por los autores originales de sb0t.
