@@ -31,7 +31,7 @@ builder.Services.AddSingleton(new RoomStore(Path.Combine(dataDir, "manager.db"))
 if (fake)
     builder.Services.AddSingleton<IRoomRuntime, FakeRuntime>();
 else
-    builder.Services.AddSingleton<IRoomRuntime>(new DockerRuntime(image, Environment.GetEnvironmentVariable("DOCKER_HOST")));
+    builder.Services.AddSingleton<IRoomRuntime>(string.Equals(Environment.GetEnvironmentVariable("MANAGER_RUNTIME"), "local", StringComparison.OrdinalIgnoreCase) ? (IRoomRuntime)new LocalRuntime() : new DockerRuntime(image, Environment.GetEnvironmentVariable("DOCKER_HOST")));
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(o =>

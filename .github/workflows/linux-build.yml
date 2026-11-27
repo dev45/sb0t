@@ -142,6 +142,30 @@ jobs:
           curl -sf -b jar -X DELETE "http://localhost:5080/api/rooms/$ID?purge=true"
           echo "contenedores restantes:"; docker ps -a --filter name=areschat-room-
           echo "volumenes restantes:"; docker volume ls --filter name=areschat-room-data-
+      - name: Gestor dentro de un contenedor (topologia de produccion)
+        run: |
+          docker build -t areschat-manager manager
+          docker network create areschat-net
+          docker run -d --name gestor -p 5090:8080 --network areschat-net \
+            -e MANAGER_ADMIN_PASSWORD=ci-admin-password-1234 -e ROOM_IMAGE=areschat-room \
+            -v /var/run/docker.sock:/var/run/docker.sock areschat-manager
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:5090/ && break; sleep 2; done
+
+          curl -sf -c jar2 -H 'Content-Type: application/json' -d '{"password":"ci-admin-password-1234"}' http://localhost:5090/api/login
+          RESP=$(curl -sf -b jar2 -H 'Content-Type: application/json' -d '{"name":"Sala en red","ownerPassword":"dueno-de-prueba-2"}' http://localhost:5090/api/rooms)
+          echo "$RESP"
+          ID=$(echo "$RESP" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+          sleep 20
+
+          echo "=== el gestor (en contenedor) alcanza la API de la sala por la red ==="
+          curl -sf -b jar2 "http://localhost:5090/api/rooms/$ID/admin/status" | tee s.json; echo
+          grep -q '"running":true' s.json
+          curl -sf -b jar2 "http://localhost:5090/api/rooms/$ID/admin/users"; echo
+          docker network inspect areschat-net --format '{{range .Containers}}{{.Name}} {{end}}'
+
+          curl -sf -b jar2 -X DELETE "http://localhost:5090/api/rooms/$ID?purge=true"
+          docker rm -f gestor
+          docker network rm areschat-net
   publish:
     needs: build
     runs-on: ubuntu-latest
