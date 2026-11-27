@@ -144,8 +144,10 @@ jobs:
           echo "volumenes restantes:"; docker volume ls --filter name=areschat-room-data-
       - name: Gestor dentro de un contenedor (topologia de produccion)
         run: |
+          trap 'echo "--- FALLO: estado y logs del gestor"; docker ps -a; docker logs gestor || true' ERR
+
           docker build -t areschat-manager manager
-          docker network create areschat-net
+          docker network inspect areschat-net >/dev/null 2>&1 || docker network create areschat-net
           docker run -d --name gestor -p 5090:8080 --network areschat-net \
             -e MANAGER_ADMIN_PASSWORD=ci-admin-password-1234 -e ROOM_IMAGE=areschat-room \
             -v /var/run/docker.sock:/var/run/docker.sock areschat-manager
@@ -165,7 +167,8 @@ jobs:
 
           curl -sf -b jar2 -X DELETE "http://localhost:5090/api/rooms/$ID?purge=true"
           docker rm -f gestor
-          docker network rm areschat-net
+          docker network rm areschat-net || true
+
   publish:
     needs: build
     runs-on: ubuntu-latest
